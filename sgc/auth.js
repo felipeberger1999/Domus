@@ -98,12 +98,8 @@
   }
 
   function init(){
-    let saved=null; try{ saved=JSON.parse(localStorage.getItem('domus_auth')||'null'); }catch(e){}
-    if(saved && saved.cpf && USERS[saved.cpf] && USERS[saved.cpf].papel==='Síndico'){
-      const u=USERS[saved.cpf]; CUR=u;
-      const c=u.condos.find(x=>x.nome===saved.condo && x.status==='ativo') || u.condos.find(x=>x.status==='ativo');
-      if(c){ aplicar(u,c); $('auth').hidden=true; return; }
-    }
+    // Sempre inicia na tela de login (jornada completa para a demo).
+    try{ localStorage.removeItem('domus_auth'); }catch(e){}
     show('auth-login');
     const cpf=$('au-cpf'); if(cpf) setTimeout(()=>{ try{cpf.focus();}catch(e){} },80);
   }

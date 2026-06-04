@@ -223,10 +223,12 @@
 <script src="sgc/auth.js"></script>
 <script src="sgc/chat.js"></script>
 <script>
-/* ====== DOMUS NATIVE: evita travar em downloads dentro do WebView ====== */
+/* Só neutraliza print/open quando embarcado no app nativo (evita travar a
+   WebView). No navegador (versão web) o print gera o PDF normalmente. */
 (function(){
+  if(!window.ReactNativeWebView) return;
   try{ window.print=function(){}; }catch(e){}
-  try{ window.open=function(){ try{ if(typeof toast==='function') toast('Gerar/baixar PDF entra na versão final.'); }catch(e){} return null; }; }catch(e){}
+  try{ window.open=function(){ return null; }; }catch(e){}
 })();
 </script>
 </body>

@@ -1185,12 +1185,24 @@ GSCREENS.gsgc=function(){ const T={visao:'Visão Geral',cadastro:'Cadastro',asse
 })();
 </script>
 <script>
-/* ====== DOMUS NATIVE: evita travar em downloads (window.open/print não funcionam em WebView) ====== */
+/* No NAVEGADOR (versão web): print/open nativos funcionam → "baixar" gera PDF.
+   No APP nativo (WebView): gera o PDF de verdade via React Native (expo-print),
+   enviando o HTML por postMessage (evita travar). */
 (function(){
-  function aviso(){ try{ if(typeof toast==='function') toast('Gerar/baixar PDF e comprovantes entra na versão final do app.'); }catch(e){} }
+  if(!window.ReactNativeWebView){ return; }
   try{ window.print=function(){}; }catch(e){}
-  try{ if(!window.__openExt) window.__openExt=window.open; window.open=function(){ aviso(); return null; }; }catch(e){}
-  try{ if(typeof printDocs==='function'){ window.printDocs=function(){ aviso(); }; } }catch(e){}
+  try{ window.open=function(){ return null; }; }catch(e){}
+  try{
+    window.printDocs=function(subtitle, bodies){
+      try{
+        if(!bodies||!bodies.length){ if(typeof toast==='function') toast('Nada no período selecionado'); return; }
+        var pages=bodies.map(function(b){ return '<div class="cmp"><div class="hd">'+_domusLogo()+'<div><div class="wm">Domus</div><div style="font-size:11px;color:#666">'+subtitle+'</div></div></div>'+b+'<p class="ft">Documento gerado pelo app Domus · '+COND.nome+'.</p></div>'; }).join('');
+        var html='<html><head><meta charset="utf-8"><style>'+_DOC_CSS+'</style></head><body>'+pages+'</body></html>';
+        window.ReactNativeWebView.postMessage(JSON.stringify({type:'pdf', html:html, name:'Domus-comprovante'}));
+        if(typeof toast==='function') toast('Gerando PDF…');
+      }catch(e){}
+    };
+  }catch(e){}
 })();
 </script>
 </body>
