@@ -275,7 +275,7 @@ function renderPagar(){
        <button class="btn pinho sm" onclick="baixarComprovantes()">⬇ PDF dos comprovantes</button>
        <span class="muted" style="font-size:12px;align-self:center">${ord.length} lançamento(s)</span>
      </div>
-     <table class="tbl"><thead><tr><th>Nº</th><th>Data</th><th>Descrição</th><th class="num">Valor</th><th class="num">Juros/multa</th><th class="num">Total</th><th>Status</th><th>Comprov.</th><th class="num">Ação</th></tr></thead><tbody>${ord.map(x=>`<tr><td style="white-space:nowrap"><strong>${x.numero}</strong></td><td style="white-space:nowrap">${dataBR(x.pago_em||x.vencimento)}</td><td>${x.descricao}<div class="muted" style="font-size:11px">${x.fornecedor} · ${x.grupo} › ${x.conta}</div></td><td class="num">${brl(x.valor)}</td><td class="num ${x.encargos?'desp':'muted'}">${x.encargos?'+ '+brl(x.encargos):'–'}</td><td class="num"><strong>${brl(x.total)}</strong></td><td><span class="badge ${x.status}">${x.status}</span></td><td>${comp(x)}</td><td class="num" style="white-space:nowrap">${acao(x)}</td></tr>`).join('')}</tbody></table><p class="muted" style="font-size:12px;margin-top:10px">Cada lançamento alimenta o <strong>Resultado Contábil</strong>: as despesas entram na DRE por competência e no Balanço (passivo) enquanto abertas; ao liquidar, refletem no Fluxo de Caixa.</p></div>
+     <div class="tblx"><table class="tbl" style="min-width:1040px"><thead><tr><th>Nº</th><th>Data</th><th style="min-width:300px">Descrição</th><th class="num">Valor</th><th class="num">Juros/multa</th><th class="num">Total</th><th>Status</th><th>Comprov.</th><th class="num">Ação</th></tr></thead><tbody>${ord.map(x=>`<tr><td style="white-space:nowrap"><strong>${x.numero}</strong></td><td style="white-space:nowrap">${dataBR(x.pago_em||x.vencimento)}</td><td style="min-width:300px"><div style="font-weight:600;line-height:1.35">${x.descricao}</div><div class="muted" style="font-size:11.5px;margin-top:3px">${x.fornecedor} · ${x.grupo} › ${x.conta}</div></td><td class="num">${brl(x.valor)}</td><td class="num ${x.encargos?'desp':'muted'}">${x.encargos?'+ '+brl(x.encargos):'–'}</td><td class="num"><strong>${brl(x.total)}</strong></td><td><span class="badge ${x.status}">${x.status}</span></td><td>${comp(x)}</td><td class="num" style="white-space:nowrap">${acao(x)}</td></tr>`).join('')}</tbody></table></div><p class="muted" style="font-size:12px;margin-top:10px">Cada lançamento alimenta o <strong>Resultado Contábil</strong>: as despesas entram na DRE por competência e no Balanço (passivo) enquanto abertas; ao liquidar, refletem no Fluxo de Caixa.</p></div>
    <div class="card span-12"><div class="flex-between"><h3 style="margin:0">Fornecedores</h3></div><table class="tbl" style="margin-top:12px"><thead><tr><th>Nome</th><th>Serviço</th><th>CNPJ</th></tr></thead><tbody>${DATA.fornecedores.map(f=>`<tr><td>${f.nome}</td><td class="muted">${f.servico}</td><td class="muted">${f.cnpj}</td></tr>`).join('')}</tbody></table></div>
   </div>`;
 }
@@ -1157,3 +1157,55 @@ if(typeof Domus!=='undefined'){
 
 
 
+
+/* ===== Busca global + resumo (unidade / morador / lançamento) ===== */
+function _uLabel(u){ return u ? (u.num + '-' + u.bloco) : '—'; }
+function sgcSearchClose(){ var b=document.getElementById('tb-results'); if(b){ b.hidden=true; } }
+function sgcSearch(q){
+  var box=document.getElementById('tb-results'); if(!box) return;
+  q=(q||'').trim().toLowerCase();
+  if(q.length<1){ box.hidden=true; box.innerHTML=''; return; }
+  var uById={}; DATA.unidades.forEach(function(u){ uById[u.id]=u; });
+  var morByUni={}; DATA.moradores.forEach(function(m){ if(m.unidade_id!=null && !morByUni[m.unidade_id]) morByUni[m.unidade_id]=m; });
+  var uni=DATA.unidades.filter(function(u){ var lbl=_uLabel(u).toLowerCase(); var mor=((morByUni[u.id]&&morByUni[u.id].nome)||'').toLowerCase(); return lbl.indexOf(q)>=0||mor.indexOf(q)>=0; }).slice(0,6);
+  var pes=DATA.moradores.filter(function(m){ return (m.nome||'').toLowerCase().indexOf(q)>=0 || _uLabel(uById[m.unidade_id]).toLowerCase().indexOf(q)>=0; }).slice(0,6);
+  var lan=DATA.contasPagar.filter(function(c){ return ((c.numero||'')+' '+(c.descricao||'')+' '+(c.fornecedor||'')).toLowerCase().indexOf(q)>=0; }).slice(0,6);
+  var html='';
+  if(uni.length){ html+='<div class="grp">Unidades</div>'+uni.map(function(u){ var m=morByUni[u.id]; return '<div class="item" onclick="sgcResumoUnidade('+u.id+')"><div style="flex:1"><div class="t">Unidade '+_uLabel(u)+'</div><div class="s">'+(m?m.nome:'sem morador')+'</div></div></div>'; }).join(''); }
+  if(pes.length){ html+='<div class="grp">Moradores</div>'+pes.map(function(m){ return '<div class="item" onclick="sgcResumoMorador('+m.id+')"><div style="flex:1"><div class="t">'+m.nome+'</div><div class="s">Unidade '+_uLabel(uById[m.unidade_id])+' · '+(m.tipo||'morador')+'</div></div></div>'; }).join(''); }
+  if(lan.length){ html+='<div class="grp">Lançamentos</div>'+lan.map(function(c){ return '<div class="item" onclick="sgcIrLancamento('+c.id+')"><div style="flex:1"><div class="t">'+c.numero+' · '+c.descricao+'</div><div class="s">'+c.fornecedor+' · '+brl(c.total)+'</div></div></div>'; }).join(''); }
+  if(!html) html='<div class="empty">Nada encontrado para “'+q+'”.</div>';
+  box.innerHTML=html; box.hidden=false;
+}
+function _sgcClearSearch(){ sgcSearchClose(); var i=document.getElementById('tb-search-input'); if(i) i.value=''; }
+function sgcIrLancamento(id){ var c=DATA.contasPagar.find(function(x){return x.id===id;}); _sgcClearSearch(); if(c){ PAGAR_FORN=c.fornecedor||''; PAGAR_MES=''; PAGAR_STATUS=''; PAGAR_GRUPO=''; } nav('pagar'); }
+function _rsKv(k,v){ return '<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--linha);font-size:13.5px"><span style="color:var(--musgo)">'+k+'</span><span style="font-weight:600;text-align:right">'+v+'</span></div>'; }
+function _rsSec(t){ return '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--musgo);margin:16px 0 6px">'+t+'</div>'; }
+function _rsCard(rows){ return '<div style="background:var(--areia);border:1px solid var(--linha);border-radius:12px;padding:4px 14px">'+rows+'</div>'; }
+function _modalResumo(title, bodyHtml){ var m=document.getElementById('modal-resumo'); if(!m) return; var t=m.querySelector('.rs-title'); var b=m.querySelector('.rs-body'); if(t) t.textContent=title; if(b) b.innerHTML=bodyHtml; m.classList.add('open'); _sgcClearSearch(); }
+function fecharResumo(){ var m=document.getElementById('modal-resumo'); if(m) m.classList.remove('open'); }
+function sgcResumoUnidade(id){
+  var u=DATA.unidades.find(function(x){return x.id===id;}); if(!u) return;
+  var moradores=DATA.moradores.filter(function(m){return m.unidade_id===id;});
+  var morIds=moradores.map(function(m){return m.id;});
+  var veics=DATA.veiculos.filter(function(v){return morIds.indexOf(v.morador_id)>=0;});
+  var anims=DATA.animais.filter(function(a){return morIds.indexOf(a.morador_id)>=0;});
+  var cotas=(DATA.boletos||[]).filter(function(b){return b.unidade_id===id && b.status!=='pago';});
+  var totalAberto=cotas.reduce(function(s,b){return s+(b.valor||0);},0);
+  var body=_rsSec('Unidade')+_rsCard(_rsKv('Identificação','Unidade '+_uLabel(u))+_rsKv('Bloco',u.bloco)+_rsKv('Moradores',moradores.length)+_rsKv('Cotas em aberto',cotas.length+' · '+brl(totalAberto)))
+    +_rsSec('Pessoas')+(moradores.length?_rsCard(moradores.map(function(m){return _rsKv(m.nome,(m.tipo||'morador')+(m.telefone?(' · '+m.telefone):''));}).join('')):'<p class="muted">Sem pessoas cadastradas.</p>')
+    +(veics.length?(_rsSec('Veículos')+_rsCard(veics.map(function(v){return _rsKv(v.modelo,v.placa||'—');}).join(''))):'')
+    +(anims.length?(_rsSec('Animais')+_rsCard(anims.map(function(a){return _rsKv(a.nome,(a.especie||'')+' · '+(a.porte||''));}).join(''))):'');
+  _modalResumo('Unidade '+_uLabel(u), body);
+}
+function sgcResumoMorador(id){
+  var m=DATA.moradores.find(function(x){return x.id===id;}); if(!m) return;
+  var u=DATA.unidades.find(function(x){return x.id===m.unidade_id;});
+  var veics=DATA.veiculos.filter(function(v){return v.morador_id===id;});
+  var anims=DATA.animais.filter(function(a){return a.morador_id===id;});
+  var body=_rsCard(_rsKv('Nome',m.nome)+_rsKv('Unidade','Unidade '+_uLabel(u))+_rsKv('Tipo',m.tipo||'morador')+_rsKv('Telefone',m.telefone||'—')+_rsKv('Acesso',m.acesso||'Morador'))
+    +(veics.length?(_rsSec('Veículos')+_rsCard(veics.map(function(v){return _rsKv(v.modelo,v.placa||'—');}).join(''))):'')
+    +(anims.length?(_rsSec('Animais')+_rsCard(anims.map(function(a){return _rsKv(a.nome,(a.especie||'')+' · '+(a.porte||''));}).join(''))):'');
+  _modalResumo(m.nome, body);
+}
+document.addEventListener('click', function(e){ var s=document.getElementById('tb-search'); if(s && !s.contains(e.target)) sgcSearchClose(); });

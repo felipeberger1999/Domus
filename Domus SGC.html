@@ -83,10 +83,10 @@
     <header class="topbar">
       <button class="tb-burger" onclick="toggleSidebar()" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
       <button class="tb-switch" title="Trocar condomínio" onclick="authTrocarCondo()">Condomínio Felipe II <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"></path></svg></button>
-      <div class="tb-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg> Buscar unidade, morador, lançamento…</div>
+      <div class="tb-search" id="tb-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg><input id="tb-search-input" autocomplete="off" placeholder="Buscar unidade, morador, lançamento…" oninput="sgcSearch(this.value)" onfocus="sgcSearch(this.value)"><div class="tb-results" id="tb-results" hidden></div></div>
       <div class="tb-right">
         <button class="tb-appr" id="tb-appr" onclick="nav('pagar')"><span class="status-dot wait"></span> <span class="n">2 aprovações</span></button>
-        <button class="tb-icon" title="Notificações"><svg viewBox="0 0 24 24"><path d="M10 5a2 2 0 1 1 4 0v.4a7 7 0 0 1 4 6.3V15l1.5 2.5H4.5L6 15v-3.3a7 7 0 0 1 4-6.3z"></path><path d="M9.5 21h5"></path></svg><span class="nd"></span></button>
+        <button class="tb-icon" title="Avisos" onclick="nav('avisos')"><svg viewBox="0 0 24 24"><path d="M10 5a2 2 0 1 1 4 0v.4a7 7 0 0 1 4 6.3V15l1.5 2.5H4.5L6 15v-3.3a7 7 0 0 1 4-6.3z"></path><path d="M9.5 21h5"></path></svg><span class="nd"></span></button>
         <span class="tb-av" id="tb-av" title="Sair da conta" onclick="authLogout()">HM</span>
       </div>
     </header>
@@ -189,6 +189,12 @@
     </div>
     <p class="muted" style="font-size:12px;margin:14px 0 0">A ordem de prioridade é definida na lista (use as setas). A conta no topo é a principal para os pagamentos.</p>
   </div><div class="foot"><button type="button" class="btn" onclick="fecharBanco()">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-resumo"><div class="modal">
+  <div class="head"><h2 class="rs-title">Resumo</h2><button class="x" onclick="fecharResumo()">&times;</button></div>
+  <div class="body rs-body"></div>
+  <div class="foot"><button type="button" class="btn primary" onclick="fecharResumo()">Fechar</button></div>
 </div></div>
 
 <button id="chat-fab" class="chat-fab" onclick="chatToggle()"><span class="av"><svg class="portal" viewBox="0 0 100 100"><path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" stroke-width="10"></path><path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" stroke-width="10"></path></svg></span><span class="lbl">Assistente</span></button>
