@@ -794,12 +794,12 @@ function renderPagar(){
        <button class="btn pinho sm" onclick="baixarComprovantes()">⬇ Baixar todos os comprovantes (PDF)</button>
        <span class="sp">Comprovantes individuais na coluna ao lado de cada conta paga</span>
      </div>
-     <table class="tbl"><thead><tr><th>Nº</th><th>Data</th><th>Descrição</th><th class="num">Valor</th><th class="num">Juros/multa</th><th class="num">Total</th><th>Status</th><th>Comprovante</th><th class="num">Ação</th></tr></thead><tbody>${ord.map(x=>`<tr><td style="white-space:nowrap"><strong>${x.numero}</strong></td><td style="white-space:nowrap">${dataBR(x.pago_em||x.vencimento)}</td><td>${x.descricao}<div class="muted" style="font-size:11px">${x.fornecedor} · ${x.grupo} › ${x.conta}</div></td><td class="num">${brl(x.valor)}</td><td class="num ${x.encargos?'desp':'muted'}">${x.encargos?'+ '+brl(x.encargos):'–'}</td><td class="num"><strong>${brl(x.total)}</strong></td><td><span class="badge ${x.status}">${x.status}</span></td><td>${comp(x)}</td><td class="num" style="white-space:nowrap">${acao(x)}</td></tr>`).join('')}</tbody></table>
+     <div class="tblx"><table class="tbl" style="min-width:1080px"><thead><tr><th style="white-space:nowrap">Nº</th><th style="white-space:nowrap">Data</th><th style="min-width:340px">Descrição</th><th class="num">Valor</th><th class="num">Juros/multa</th><th class="num">Total</th><th>Status</th><th>Comprovante</th><th class="num">Ação</th></tr></thead><tbody>${ord.map(x=>`<tr><td style="white-space:nowrap"><strong>${x.numero}</strong></td><td style="white-space:nowrap">${dataBR(x.pago_em||x.vencimento)}</td><td style="min-width:340px"><div style="font-weight:600;line-height:1.35">${x.descricao}</div><div class="muted" style="font-size:11.5px;margin-top:3px">${x.fornecedor} · ${x.grupo} › ${x.conta}</div></td><td class="num">${brl(x.valor)}</td><td class="num ${x.encargos?'desp':'muted'}">${x.encargos?'+ '+brl(x.encargos):'–'}</td><td class="num"><strong>${brl(x.total)}</strong></td><td><span class="badge ${x.status}">${x.status}</span></td><td>${comp(x)}</td><td class="num" style="white-space:nowrap">${acao(x)}</td></tr>`).join('')}</tbody></table></div>
      <p class="muted" style="font-size:12px;margin-top:10px">Cada lançamento alimenta o <strong>Resultado Contábil</strong>: as despesas entram na DRE por competência e no Balanço (passivo) enquanto abertas; ao liquidar, refletem no Fluxo de Caixa.</p></div>`;
 
   const fornec = `<div class="card span-12"><h3>Fornecedores <span class="r">${DATA.fornecedores.length} cadastrados</span></h3><table class="tbl"><thead><tr><th>Nome</th><th>Serviço</th><th>CNPJ</th></tr></thead><tbody>${DATA.fornecedores.map(f=>`<tr><td><strong>${f.nome}</strong></td><td class="muted">${f.servico}</td><td class="muted">${f.cnpj}</td></tr>`).join('')}</tbody></table></div>`;
 
-  return `<div class="ai-note"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E5A4F" stroke-width="2"><path d="M3 7h18v12H3z"></path><path d="M3 11h18"></path></svg><div>O <strong>agente Pagamentos</strong> identifica as contas e encaminha cada uma para a sua aprovação. Ao aprovar, ele paga o fornecedor e o <strong>agente Contábil</strong> lança o movimento no <strong>Resultado Contábil</strong>.</div></div>
+  return `<div class="pg-zoom"><div class="ai-note"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E5A4F" stroke-width="2"><path d="M3 7h18v12H3z"></path><path d="M3 11h18"></path></svg><div>O <strong>agente Pagamentos</strong> identifica as contas e encaminha cada uma para a sua aprovação. Ao aprovar, ele paga o fornecedor e o <strong>agente Contábil</strong> lança o movimento no <strong>Resultado Contábil</strong>.</div></div>
   <div class="grid">
    <div class="card kpi terracota span-3"><h3>A pagar · aberto</h3><div class="valor">${brl(aPagar)}</div><div class="legenda">${pend} pendente(s) + ${aprovQtd} aprovada(s)</div></div>
    <div class="card kpi span-3"><h3>Aguardando você</h3><div class="valor">${pend}</div><div class="legenda">Identificadas pelo agente</div></div>
@@ -808,7 +808,7 @@ function renderPagar(){
    ${queue}
    ${tabela}
    ${fornec}
-  </div>`;
+  </div></div>`;
 }
 
 /* ============================================================

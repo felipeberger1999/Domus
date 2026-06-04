@@ -80,6 +80,7 @@ a{color:inherit}
 .card{background:var(--creme);border:1px solid var(--linha);border-radius:16px;padding:20px 22px;box-shadow:var(--sombra-sm);min-width:0}
 /* rolagem horizontal só na tabela (não no card) — preserva o scroll vertical da página */
 .tblx{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.pg-zoom{zoom:.8}
 .card h3{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--musgo);margin:0 0 15px;display:flex;align-items:center;gap:8px}
 .span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-5{grid-column:span 5}.span-6{grid-column:span 6}.span-7{grid-column:span 7}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
 
