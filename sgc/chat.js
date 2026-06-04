@@ -24,10 +24,13 @@
   function chips(items){ const s=$('chat-suggest'); if(!s) return; s.innerHTML=items.map(it=>'<button class="chat-chip">'+it.label+'</button>').join(''); [...s.children].forEach((b,i)=>b.onclick=items[i].onClick); }
   function clearChips(){ const s=$('chat-suggest'); if(s) s.innerHTML=''; }
   function defaultChips(){ chips([
+    {label:'Resumo do mês', onClick:()=>handle('Me dê um resumo da situação do condomínio este mês')},
     {label:'📎 Lançar uma conta', onClick:()=>{ addUser('Lançar uma conta'); clearChips(); intentLancar(); }},
+    {label:'Inadimplência', onClick:()=>handle('Como está a inadimplência?')},
     {label:'Contas a aprovar', onClick:()=>handle('Contas a aprovar')},
-    {label:'Demitir funcionário', onClick:()=>handle('Demitir funcionário')},
-    {label:'Resumo do mês', onClick:()=>handle('Me dê um resumo da situação do condomínio este mês')}
+    {label:'Despesas do mês', onClick:()=>handle('Quanto gastamos este mês?')},
+    {label:'Folha', onClick:()=>handle('Qual a folha de pagamento?')},
+    {label:'Buscar unidade', onClick:()=>{ addUser('Buscar uma unidade'); clearChips(); intentBuscaPrompt(); }}
   ]); }
 
   /* ---------- abrir / fechar / reset ---------- */
@@ -42,7 +45,7 @@
   window.chatReset = function(){ $('chat-body').innerHTML=''; clearChips(); greet(); try{$('chat-input').focus();}catch(e){} };
 
   function greet(){
-    addBot('Olá, Helena 👋 Sou o <b>assistente Domus</b>. Posso <b>responder qualquer dúvida</b> sobre o condomínio, <b>lançar contas</b> a partir de uma foto ou documento e <b>abrir processos</b> (demissão, admissão, assembleia, avisos) — sempre seguindo a governança.');
+    addBot('Olá, Helena 👋 Sou o <b>assistente Domus</b>. Posso te dar o <b>panorama do mês</b>, consultar <b>inadimplência, despesas, folha e contas a aprovar</b>, abrir o <b>resumo de qualquer unidade ou morador</b>, <b>lançar contas</b> a partir de foto/documento e <b>abrir processos</b> (demissão, admissão, assembleia, avisos) — sempre seguindo a governança.');
     defaultChips();
   }
 
@@ -55,11 +58,48 @@
     if(/admit|contrat|admiss|nova vaga/.test(low)) return intentAdmitir();
     if(/assembl|convoc/.test(low)) return intentAssembleia();
     if(/aviso|comunic|avisar/.test(low)) return intentAviso();
+    if(/r[ée]gua|configurar cobran/.test(low)) return intentRegua();
     if(/(lan[çc]ar|anexar).*(conta|boleto|nota|document|despesa)|(conta|boleto|nota fiscal|despesa).*(lan[çc]|anexar)|^lan[çc]ar|anexar (um|o )?document/.test(low)) return intentLancar();
+    if(/relat[óo]rio|emitir pdf|gerar pdf|exportar/.test(low)) return intentRelatorio();
+    if(/resumo|situa[çc][aã]o|panorama|como est[aá]( o| tudo| o m[êe]s)?/.test(low)) return intentResumo();
+    if(/despesa|gasto|or[çc]ament|term[ôo]metro/.test(low)) return intentDespesas();
+    if(/resultado|d\.?r\.?e\.?|super[áa]vit|d[ée]ficit|balan[çc]o|fluxo de caixa|contábil/.test(low)) return intentResultado();
+    if(/previs[aã]o|proje[çc][aã]o/.test(low)) return intentPrevisao();
+    if(/folha|funcion[áa]ri|equipe|colaborador|sal[áa]rio|departamento pessoal|\bdp\b/.test(low)) return intentFolha();
+    if(/fornecedor/.test(low)) return intentFornecedores();
+    if(/quantas? unidade|quantos? morador|quantas? pessoa|quantos? funcion/.test(low)) return intentContagens();
     if(/quantas? cota|inadimpl|atras|cobran|a pagar|pendente|aprovar|pagamento/.test(low)) return fin(low, raw);
-    if(/saldo|caixa/.test(low)) { return botAfter(700,'O <b>saldo em caixa</b> do '+DATA.condominio.nome+' é <b>'+brl(saldoAtual())+'</b>.').then(defaultChips); }
-    return aiAnswer(raw);   // pergunta aberta → IA
+    if(/saldo|caixa/.test(low)) { return botAfter(650,'O <b>saldo em caixa</b> do '+DATA.condominio.nome+' é <b>'+brl(saldoAtual())+'</b>.').then(defaultChips); }
+    return aiAnswer(raw);
   }
+
+  function _navChip(label, sec){ return {label:label, onClick:function(){ try{ if(typeof nav==='function') nav(sec); window.chatToggle(false); }catch(e){} }}; }
+  function intentResumo(){
+    var i=inadimplencia(), ap=aPagarAberto(), t=termometro();
+    var pend=DATA.contasPagar.filter(function(c){return c.status==='pendente';}).length;
+    var folha=sum(DATA.funcionarios.filter(function(f){return f.status==='ativo';}),function(x){return x.salario;});
+    var prox=DATA.assembleias.find(function(a){return a.status==='convocada';});
+    var card='<div class="chat-card"><div class="ttl">'+PG+' Panorama · '+DATA.condominio.nome+'</div>'
+      +'<div class="kv"><span class="k">Saldo em caixa</span><span class="v">'+brl(saldoAtual())+'</span></div>'
+      +'<div class="kv"><span class="k">Despesas / orçamento</span><span class="v">'+brl(t.g)+' / '+brl(t.o)+' ('+t.p.toFixed(0)+'%)</span></div>'
+      +'<div class="kv"><span class="k">Inadimplência</span><span class="v">'+i.pct.toFixed(1).replace('.',',')+'% · '+brl(i.valor)+'</span></div>'
+      +'<div class="kv"><span class="k">A pagar (aberto)</span><span class="v">'+brl(ap.valor)+'</span></div>'
+      +'<div class="kv"><span class="k">Contas a aprovar</span><span class="v">'+pend+'</span></div>'
+      +'<div class="kv"><span class="k">Folha mensal</span><span class="v">'+brl(folha)+'</span></div>'
+      +'<div class="kv"><span class="k">Próxima assembleia</span><span class="v">'+(prox?dataBR(prox.data):'—')+'</span></div></div>';
+    botAfter(800, 'Aqui está o panorama do mês:'+card).then(function(){ chips([_navChip('Visão Geral','visao'), _navChip('Contas a Pagar','pagar'), {label:'Buscar unidade', onClick:function(){ addUser('Buscar uma unidade'); clearChips(); intentBuscaPrompt(); }}]); });
+  }
+  function intentDespesas(){ var t=termometro(); botAfter(700,'As <b>despesas do mês</b> somam <b>'+brl(t.g)+'</b> de <b>'+brl(t.o)+'</b> orçados ('+t.p.toFixed(0)+'%). O agente Contábil classifica cada despesa por grupo no Resultado Contábil.').then(function(){ chips([_navChip('Resultado Contábil','resultado'), _navChip('Contas a Pagar','pagar')]); }); }
+  function intentResultado(){ botAfter(650,'O <b>Resultado Contábil</b> traz DRE, Balanço, Fluxo de Caixa e Balancete — atualizados automaticamente pelo agente Contábil a cada lançamento.').then(function(){ chips([_navChip('Abrir Resultado Contábil','resultado')]); }); }
+  function intentPrevisao(){ botAfter(650,'A <b>Previsão Orçamentária</b> projeta receitas, despesas e saldo pela média histórica — você ajusta reajuste da taxa, inflação e horizonte.').then(function(){ chips([_navChip('Abrir Previsão','previsao')]); }); }
+  function intentFolha(){ var ativos=DATA.funcionarios.filter(function(f){return f.status==='ativo';}); var folha=sum(ativos,function(x){return x.salario;}); botAfter(700,'A <b>folha mensal</b> é <b>'+brl(folha)+'</b> com <b>'+ativos.length+'</b> funcionários ativos. O agente de DP processa a folha e roda admissão/demissão no eSocial.').then(function(){ chips([_navChip('Departamento Pessoal','dp')]); }); }
+  function intentFornecedores(){ var n=(DATA.fornecedores||[]).length; botAfter(650,'Há <b>'+n+'</b> fornecedores cadastrados; as contas de cada um aparecem em Contas a Pagar.').then(function(){ chips([_navChip('Contas a Pagar','pagar')]); }); }
+  function intentContagens(){ botAfter(650,'O <b>'+DATA.condominio.nome+'</b> tem <b>'+DATA.unidades.length+'</b> unidades, <b>'+DATA.moradores.length+'</b> pessoas cadastradas e <b>'+DATA.funcionarios.filter(function(f){return f.status==='ativo';}).length+'</b> funcionários ativos.').then(function(){ chips([_navChip('Abrir Cadastro','cadastro')]); }); }
+  function intentRelatorio(){ botAfter(700,'Posso te levar onde emitir <b>relatórios em PDF</b>: o <b>Resultado Contábil</b> e a <b>Previsão</b> têm o botão "Emitir PDF"; em Contas a Pagar você baixa os comprovantes.').then(function(){ chips([_navChip('Resultado Contábil','resultado'), _navChip('Previsão','previsao'), _navChip('Contas a Pagar','pagar')]); }); }
+  function intentRegua(){ botAfter(650,'A <b>régua de cobrança</b> define as etapas que o agente de Cobrança executa (lembrete antes do vencimento, cobrança no atraso…).').then(function(){ chips([{label:'Configurar régua', onClick:function(){ try{ window.chatToggle(false); if(typeof nav==='function') nav('receber'); setTimeout(function(){ try{ if(typeof abrirRegua==='function') abrirRegua(); }catch(e){} },300); }catch(e){} }}]); }); }
+  function intentBuscaPrompt(){ botAfter(600,'Diga o <b>número da unidade</b> (ex.: 201 ou 201-A) ou o <b>nome do morador</b> que eu mostro o resumo.').then(defaultChips); }
+  function _acharUnidade(q){ var m=(q||'').match(/(\d{2,4})\s*-?\s*([abAB])?\b/); if(!m) return null; var num=m[1]; var bloco=(m[2]||'').toUpperCase(); return DATA.unidades.find(function(u){ return String(u.num)===num && (!bloco || u.bloco===bloco); }) || DATA.unidades.find(function(u){ return String(u.num)===num; }); }
+  function _acharMorador(q){ q=(q||'').toLowerCase().replace(/.*\b(morador|moradora|pessoa|s[íi]ndic[oa]|do|da|de)\b\s*/,'').trim(); if(q.length<3) return null; return DATA.moradores.find(function(m){ return (m.nome||'').toLowerCase().indexOf(q)>=0; }); }
 
   /* ---------- IA: perguntas abertas ancoradas nos dados ---------- */
   function contexto(){
@@ -91,8 +131,12 @@
     let ans=null;
     try{ if(window.claude && window.claude.complete) ans = await window.claude.complete(prompt(q)); }catch(e){ ans=null; }
     t.remove();
-    if(ans && ans.trim()) addBot(formatAI(ans));
-    else addBot('Não consegui consultar a base agora. Mas posso agir direto: <b>lançar contas</b> por documento, <b>demissões/admissões</b>, <b>assembleias</b>, <b>avisos</b> e indicadores. É só pedir.');
+    if(ans && ans.trim()){ addBot(formatAI(ans)); defaultChips(); return; }
+    // sem IA conectada → tenta resolver pela busca de unidade/morador antes de orientar
+    var u=_acharUnidade(q); var mor=u?null:_acharMorador(q);
+    if(u){ addBot('Encontrei a <b>Unidade '+u.num+'-'+u.bloco+'</b> — abrindo o resumo.'); try{ if(typeof sgcResumoUnidade==='function') sgcResumoUnidade(u.id); }catch(e){} }
+    else if(mor){ addBot('Encontrei <b>'+mor.nome+'</b> — abrindo o resumo.'); try{ if(typeof sgcResumoMorador==='function') sgcResumoMorador(mor.id); }catch(e){} }
+    else addBot('Ainda não tenho uma IA aberta conectada (isso liga com um backend depois), mas já resolvo bastante. Peça, por exemplo: <b>resumo do mês</b>, <b>inadimplência</b>, <b>despesas</b>, <b>folha</b>, <b>contas a aprovar</b>, <b>lançar conta por foto</b>, <b>convocar assembleia</b> ou <b>publicar aviso</b> — ou busque uma <b>unidade/morador</b> pelo número ou nome.');
     defaultChips();
   }
 
