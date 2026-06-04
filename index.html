@@ -1048,7 +1048,16 @@ function delPort(){ const tp=window.PORT_T; const meta=PORT_TYPES[tp]; if(window
 function gEntregaRetirar(id){ if(window.Domus) Domus.update('entregas',a=>a.map(x=>x.id===id?Object.assign({},x,{status:'retirado'}):x)); toast('Entrega retirada'); render('gportaria'); }
 
 let GSGC_SEC='visao';
-function openSGC(sec){ GSGC_SEC=sec||'visao'; try{ localStorage.setItem('domus_auth', JSON.stringify({cpf:'11111111111',condo:'Condomínio Felipe II'})); }catch(e){} go('gsgc'); }
+/* URL pública do SGC web (GitHub Pages). Atualize aqui se mudar de host. */
+var SGC_WEB='https://felipeberger1999.github.io/Domus/Domus%20SGC.html';
+function openSGC(sec){ GSGC_SEC=sec||'visao';
+  try{ localStorage.setItem('domus_auth', JSON.stringify({cpf:'11111111111',condo:'Condomínio Felipe II'})); }catch(e){}
+  var url=SGC_WEB+(sec?('#'+sec):'');
+  // App nativo (WebView) → abre no NAVEGADOR do celular
+  if(window.ReactNativeWebView && window.ReactNativeWebView.postMessage){ try{ window.ReactNativeWebView.postMessage(JSON.stringify({type:'openURL',url:url})); }catch(e){} return; }
+  // Navegador (versão web) → abre em nova aba
+  try{ var op=window.__openExt||window.open; var w=op?op.call(window,url,'_blank'):null; if(!w){ location.href=url; } }catch(e){ try{ location.href=url; }catch(_){} }
+}
 function sgcNav(){ try{ const f=document.getElementById('gsgc-iframe'); if(f&&f.contentWindow&&f.contentWindow.nav) f.contentWindow.nav(GSGC_SEC); }catch(e){} }
 GSCREENS.gsgc=function(){ const T={visao:'Visão Geral',cadastro:'Cadastro',assembleias:'Assembleias',pagar:'Contas a Pagar',receber:'Contas a Receber',resultado:'Resultado Contábil',previsao:'Previsão',dp:'Departamento Pessoal',avisos:'Avisos',portaria:'Portaria & Reservas'}; return `<div style="display:flex;flex-direction:column;height:100%"><div class="gsgc-bar2"><button class="scr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"></path></svg></button><div><div style="font-family:var(--serif);font-weight:560;font-size:16px">SGC completo</div><div class="muted" style="font-size:11px">${T[GSGC_SEC]||''} · edição + chat IA</div></div></div><iframe id="gsgc-iframe" class="gsgc-frame2" src="Domus SGC.html" onload="sgcNav()"></iframe></div>`; };
 
@@ -1153,7 +1162,7 @@ GSCREENS.gsgc=function(){ const T={visao:'Visão Geral',cadastro:'Cadastro',asse
 (function(){
   function aviso(){ try{ if(typeof toast==='function') toast('Gerar/baixar PDF e comprovantes entra na versão final do app.'); }catch(e){} }
   try{ window.print=function(){}; }catch(e){}
-  try{ window.open=function(){ aviso(); return null; }; }catch(e){}
+  try{ if(!window.__openExt) window.__openExt=window.open; window.open=function(){ aviso(); return null; }; }catch(e){}
   try{ if(typeof printDocs==='function'){ window.printDocs=function(){ aviso(); }; } }catch(e){}
 })();
 </script>
