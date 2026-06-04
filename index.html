@@ -258,6 +258,11 @@ html,body{margin:0}
 .notch{display:none !important}
 .statusbar{display:none !important}
 .applogin{border-radius:0 !important}
+/* tiles "Todas as áreas" / "Tudo do seu lar" com tamanho uniforme */
+.feat{min-height:108px !important;height:108px !important;justify-content:center !important}
+.feat .t{min-height:30px;display:flex;align-items:center;justify-content:center}
+.cad-x{margin-left:auto;width:28px;height:28px;border-radius:8px;border:1px solid var(--linha);background:var(--creme);color:var(--musgo);font-size:17px;line-height:1;cursor:pointer;flex-shrink:0;display:grid;place-items:center}
+.cad-x:active{background:#F4DDD3;color:var(--terracota);border-color:#e6c3b4}
 </style>
 </head>
 <body>
@@ -726,7 +731,7 @@ const GSCREENS={
     const search=`<input class="inp" id="cadq" placeholder="Buscar…" value="${window.CAD_Q||''}" oninput="setCadQ(this.value)" style="margin-bottom:12px">`;
     let list='';
     if(view==='unidades'){ const arr=(c.listaUnidades||[]).filter(x=>!q||x.u.toLowerCase().includes(q)||(x.morador||'').toLowerCase().includes(q)); list=cadWrap(arr,arr.slice(0,60).map(x=>`<div class="row flat"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 22V12h6v10M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span><div class="main"><div class="t">Unidade ${x.u}</div><div class="s">${x.morador} · ${x.tipo}${x.vaga?' · vaga '+x.vaga:''}</div></div></div>`).join('')); }
-    else if(view==='pessoas'){ const arr=(c.listaPessoas||[]).filter(x=>!q||(x.nome||'').toLowerCase().includes(q)||x.u.toLowerCase().includes(q)); list=cadWrap(arr,arr.slice(0,60).map(x=>`<div class="row flat"><span class="ic ava ${x.tipo==='inquilino'?'t2':''}">${ini(x.nome)}</span><div class="main"><div class="t">${x.nome}</div><div class="s">Unid. ${x.u} · ${x.tipo}${x.acesso&&x.acesso!=='Morador'?' · '+x.acesso:''}</div></div></div>`).join('')); }
+    else if(view==='pessoas'){ const arr=(c.listaPessoas||[]).filter(x=>!q||(x.nome||'').toLowerCase().includes(q)||x.u.toLowerCase().includes(q)); list=cadWrap(arr,arr.slice(0,60).map(x=>{const k=_pk(x._k||(x.u+'|'+x.nome));return `<div class="row" onclick="editPessoa('${k}')"><span class="ic ava ${x.tipo==='inquilino'?'t2':''}">${ini(x.nome)}</span><div class="main"><div class="t">${x.nome}</div><div class="s">Unid. ${x.u} · ${x.tipo}${x.acesso&&x.acesso!=='Morador'?' · '+x.acesso:''}</div></div><button class="cad-x" onclick="event.stopPropagation();delPessoa('${k}')" title="Excluir">&times;</button></div>`;}).join('')); }
     else if(view==='veiculos'){ const arr=(c.listaVeiculos||[]).filter(x=>!q||(x.placa||'').toLowerCase().includes(q)||(x.modelo||'').toLowerCase().includes(q)||(x.dono||'').toLowerCase().includes(q)); list=cadWrap(arr,arr.slice(0,60).map(x=>`<div class="row flat"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 13l1.6-4.6A2 2 0 0 1 8.5 7h7a2 2 0 0 1 1.9 1.4L19 13M5 13h14v4H5zM7 17v2M17 17v2"></path></svg></span><div class="main"><div class="t">${x.modelo} · ${x.placa}</div><div class="s">${x.dono} · ${x.u}${x.vaga?' · vaga '+x.vaga:''}</div></div></div>`).join('')); }
     else { const arr=(c.listaAnimais||[]).filter(x=>!q||(x.nome||'').toLowerCase().includes(q)||(x.dono||'').toLowerCase().includes(q)); list=cadWrap(arr,arr.slice(0,60).map(x=>`<div class="row flat"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="11" r="1.6"></circle><circle cx="9.5" cy="7.5" r="1.6"></circle><circle cx="14.5" cy="7.5" r="1.6"></circle><circle cx="18.5" cy="11" r="1.6"></circle><path d="M8 16.5c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5c0 1.6-1.5 2.5-4 2.5s-4-.9-4-2.5z"></path></svg></span><div class="main"><div class="t">${x.nome} · ${x.especie}</div><div class="s">${x.dono} · ${x.u} · porte ${x.porte}</div></div></div>`).join('')); }
     return head('Cadastro','Base do condomínio')+`<div class="pad">${tiles}${seg}${search}<div class="list">${list}</div><button class="btn" style="margin-top:14px" onclick="openCadNovo('${view}')">+ Novo cadastro</button><button class="btn sec" style="margin-top:10px" onclick="openSGC('cadastro')">Importar planilha no SGC</button><div class="connect">Pessoas, unidades, vagas, veículos e animais</div></div>`;
@@ -942,7 +947,7 @@ GSCREENS.gbalancete=function(){
     +html+totFoot
     +gBtnRelatorio()+'<div class="connect">Verificação contábil · Σ débitos = Σ créditos</div></div>';
 };
-GSCREENS.gprevisao=function(){ const p=(gData().previsao)||((gData().resultado||{}).previsao)||{avgRec:0,avgDesp:0,resMes:0,saldoFim:0,proj:[]}; var pj=(p.proj||[]).slice(0,window.PREV_H||6); var mx=Math.max.apply(null,pj.map(function(x){return x.saldo;}).concat([1])); var bars=pj.map(function(x){return '<div class="b"><span style="font-size:9px;font-weight:600;color:var(--musgo)">'+(x.saldo/1000).toFixed(0)+'k</span><div class="c" style="height:'+Math.max(x.saldo/mx*100,4)+'%;background:var(--pinho)"></div><div class="l">'+x.mes+'</div></div>';}).join(''); var rows=pj.map(function(x){return '<div class="row flat"><div class="main"><div class="t">'+x.mes+'/26</div><div class="s">receita '+money(x.rec)+' · despesa '+money(x.desp)+'</div></div><div class="end"><div class="amt" style="color:'+(x.res>=0?'var(--pinho)':'var(--terracota)')+'">'+money(x.res)+'</div><span class="pill open">saldo '+money(x.saldo)+'</span></div></div>';}).join(''); var kpi=function(k,v,cls){return '<div class="card" style="padding:13px"><div class="muted" style="font-size:10px;font-weight:700;text-transform:uppercase">'+k+'</div><div class="serif" style="font-size:19px;font-weight:560;margin-top:6px;'+(cls||'')+'">'+v+'</div></div>';}; return head('Previsão orçamentária','Projeção · horizonte 6 meses')+'<div class="pad"><div class="feat-grid" style="grid-template-columns:1fr 1fr">'+kpi('Receita média/mês',money(p.avgRec),'color:var(--pinho)')+kpi('Despesa média/mês',money(p.avgDesp),'color:var(--terracota)')+kpi('Resultado/mês',money(p.resMes),(p.resMes>=0?'color:var(--pinho)':'color:var(--terracota)'))+kpi('Saldo projetado',money(p.saldoFim))+'</div><div style="display:flex;gap:8px;margin:14px 0 0">'+[3,6,12].map(function(hh){return '<button class="btn '+((window.PREV_H||6)===hh?'pinho':'sec')+' sm" style="flex:1" onclick="setPrevH('+hh+')">'+hh+' meses</button>';}).join('')+'</div><h2 class="sec">Saldo projetado</h2><div class="card"><div class="bars" style="height:104px;gap:4px">'+bars+'</div></div><h2 class="sec">Projeção detalhada</h2><div class="list">'+rows+'</div><div class="connect">Média histórica jan–jun</div></div>'; };
+GSCREENS.gprevisao=function(){ const p=(gData().previsao)||((gData().resultado||{}).previsao)||{avgRec:0,avgDesp:0,resMes:0,saldoFim:0,proj:[]}; var pj=(p.proj||[]).slice(0,window.PREV_H||6); var saldoH=pj.length?pj[pj.length-1].saldo:(p.saldoFim||0); var resAcum=pj.reduce(function(s,x){return s+(x.res||0);},0); var mx=Math.max.apply(null,pj.map(function(x){return x.saldo;}).concat([1])); var bars=pj.map(function(x){return '<div class="b"><span style="font-size:9px;font-weight:600;color:var(--musgo)">'+(x.saldo/1000).toFixed(0)+'k</span><div class="c" style="height:'+Math.max(x.saldo/mx*100,4)+'%;background:var(--pinho)"></div><div class="l">'+x.mes+'</div></div>';}).join(''); var rows=pj.map(function(x){return '<div class="row flat"><div class="main"><div class="t">'+x.mes+'/26</div><div class="s">receita '+money(x.rec)+' · despesa '+money(x.desp)+'</div></div><div class="end"><div class="amt" style="color:'+(x.res>=0?'var(--pinho)':'var(--terracota)')+'">'+money(x.res)+'</div><span class="pill open">saldo '+money(x.saldo)+'</span></div></div>';}).join(''); var kpi=function(k,v,cls){return '<div class="card" style="padding:13px"><div class="muted" style="font-size:10px;font-weight:700;text-transform:uppercase">'+k+'</div><div class="serif" style="font-size:19px;font-weight:560;margin-top:6px;'+(cls||'')+'">'+v+'</div></div>';}; return head('Previsão orçamentária','Projeção · horizonte '+(window.PREV_H||6)+' meses')+'<div class="pad"><div class="feat-grid" style="grid-template-columns:1fr 1fr">'+kpi('Receita média/mês',money(p.avgRec),'color:var(--pinho)')+kpi('Despesa média/mês',money(p.avgDesp),'color:var(--terracota)')+kpi('Resultado acum.',money(resAcum),(resAcum>=0?'color:var(--pinho)':'color:var(--terracota)'))+kpi('Saldo projetado',money(saldoH))+'</div><div style="display:flex;gap:8px;margin:14px 0 0">'+[3,6,12].map(function(hh){return '<button class="btn '+((window.PREV_H||6)===hh?'pinho':'sec')+' sm" style="flex:1" onclick="setPrevH('+hh+')">'+hh+' meses</button>';}).join('')+'</div><h2 class="sec">Saldo projetado</h2><div class="card"><div class="bars" style="height:104px;gap:4px">'+bars+'</div></div><h2 class="sec">Projeção detalhada</h2><div class="list">'+rows+'</div><div class="connect">Média histórica jan–jun</div></div>'; };
 /* ===== DP · detalhe e admissão ===== */
 function openDpFunc(i){ window.DPF_IDX=i; go('gdpfunc'); }
 GSCREENS.gdpfunc=function(){ const d=gData().dp||{}; const f=(d.lista||[])[window.DPF_IDX||0]; if(!f) return head('Funcionário')+'<div class="pad"><div class="muted" style="font-size:13px">Registro não encontrado.</div></div>';
@@ -988,6 +993,12 @@ function gCadLists(){ const c=gData().cadastro||{}; let base;
   else { base=gGenCad(); }
   const app=(window.Domus?Domus.get('cadastroApp'):[])||[];
   app.forEach(function(r){ const it=r.item; if(!it) return; if(r.tipo==='unidades'){ base.listaUnidades=[it].concat(base.listaUnidades); base.unidades++; } else if(r.tipo==='pessoas'){ base.listaPessoas=[it].concat(base.listaPessoas); base.moradores++; } else if(r.tipo==='veiculos'){ base.listaVeiculos=[it].concat(base.listaVeiculos); base.veiculos++; } else if(r.tipo==='animais'){ base.listaAnimais=[it].concat(base.listaAnimais); base.animais++; } });
+  /* overlay de edição/exclusão de pessoas (mobile) */
+  try{ var _ed=(window.Domus?Domus.get('cadEdit'):null)||{}; var _del=(window.Domus?Domus.get('cadDel'):null)||[];
+    base.listaPessoas=base.listaPessoas.map(function(x){ x._k=x.u+'|'+x.nome; return x; });
+    if(_del.length){ var _n0=base.listaPessoas.length; base.listaPessoas=base.listaPessoas.filter(function(x){return _del.indexOf(x._k)<0;}); base.moradores=Math.max(0,base.moradores-(_n0-base.listaPessoas.length)); }
+    base.listaPessoas=base.listaPessoas.map(function(x){ var e=_ed[x._k]; return e?Object.assign({},x,e,{_k:x._k}):x; });
+  }catch(e){}
   return base; }
 function gGenCad(){
   const SOBR=['Silva','Santos','Oliveira','Souza','Lima','Pereira','Costa','Almeida','Nunes','Rocha','Dias','Alves','Mendes','Carvalho','Gomes','Martins','Araújo','Barbosa','Ribeiro','Fernandes'];
@@ -1003,6 +1014,29 @@ function gGenCad(){
   return {unidades:U.length,moradores:P.length,veiculos:V.length,animais:A.length,listaUnidades:U,listaPessoas:P,listaVeiculos:V,listaAnimais:A}; }
 /* Cadastro · novo registro nativo */
 function openCadNovo(tp){ window.CADN_T=tp||'unidades'; go('gcadnovo'); }
+/* ===== Cadastro de pessoas: editar + excluir (com confirmação) ===== */
+function _pk(s){ try{return btoa(unescape(encodeURIComponent(s)));}catch(e){return s;} }
+function _pu(s){ try{return decodeURIComponent(escape(atob(s)));}catch(e){return s;} }
+function editPessoa(b64){ window.EDIT_PESSOA=_pu(b64); go('editPessoa'); }
+function delPessoa(b64){ window.DEL_PESSOA=_pu(b64); go('confirmDelPessoa'); }
+function _findPessoa(k){ var arr=(gCadLists().listaPessoas)||[]; return arr.find(function(p){return (p._k||(p.u+'|'+p.nome))===k;})||null; }
+function _backCad(){ while(STACK.length>1 && STACK[STACK.length-1]!=='gcadastro') STACK.pop(); render('gcadastro'); }
+GSCREENS.editPessoa=function(){ var k=window.EDIT_PESSOA; var x=_findPessoa(k)||{}; var tipos=['morador','inquilino','visitante']; var aces=['Morador','Gestor','Funcionário','Sem acesso'];
+  return head('Editar cadastro', x.nome||'')+'<div class="pad"><div class="card qform">'
+    +'<div class="field"><label>Nome completo</label><input class="inp" id="ep-nome" value="'+_esc(x.nome)+'"></div>'
+    +'<div class="field"><label>Unidade</label><input class="inp" value="'+_esc(x.u)+'" disabled></div>'
+    +'<div class="field"><label>Tipo</label><select class="inp" id="ep-tipo">'+tipos.map(function(t){return '<option '+((x.tipo||'morador')===t?'selected':'')+'>'+t+'</option>';}).join('')+'</select></div>'
+    +'<div class="field"><label>Telefone</label><input class="inp" id="ep-tel" value="'+_esc(x.tel)+'" placeholder="+55 11 ..."></div>'
+    +'<div class="field"><label>Acesso (sistemas linkados)</label><select class="inp" id="ep-acesso">'+aces.map(function(a){return '<option '+((x.acesso||'Morador')===a?'selected':'')+'>'+a+'</option>';}).join('')+'</select></div>'
+    +'<button class="btn" onclick="savePessoa()">Salvar alterações</button>'
+    +'<button class="btn sec" style="margin-top:10px;color:var(--terracota);border-color:#e6c3b4" onclick="delPessoa(\''+_pk(k)+'\')">Excluir cadastro</button>'
+    +'</div><div class="connect">Alterações refletem no SGC</div></div>'; };
+function savePessoa(){ var k=window.EDIT_PESSOA; var nome=(document.getElementById('ep-nome').value||'').trim(); if(!nome){toast('Informe o nome');return;} var tipo=document.getElementById('ep-tipo').value; var tel=(document.getElementById('ep-tel').value||'').trim(); var acesso=document.getElementById('ep-acesso').value; if(window.Domus){ var ed=Domus.get('cadEdit')||{}; ed[k]={nome:nome,tipo:tipo,tel:tel,acesso:acesso}; Domus.set('cadEdit',ed); } toast('Cadastro atualizado'); _backCad(); }
+GSCREENS.confirmDelPessoa=function(){ var k=window.DEL_PESSOA; var x=_findPessoa(k)||{nome:'este cadastro'}; return head('Excluir cadastro')+'<div class="pad"><div class="card" style="border-color:#e6c3b4"><div style="display:flex;gap:12px;align-items:flex-start"><span class="ic" style="width:42px;height:42px;border-radius:12px;background:#F4DDD3;display:grid;place-items:center;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:21px;height:21px;stroke:var(--terracota);fill:none;stroke-width:2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"></path></svg></span><div><div style="font-weight:700;font-size:14.5px">Tem certeza?</div><div class="muted" style="font-size:13px;margin-top:4px;line-height:1.45">Você vai excluir <b>'+_esc(x.nome)+'</b>'+(x.u?(' (unid. '+_esc(x.u)+')'):'')+'. Esta ação remove o cadastro e reflete no SGC.</div></div></div></div>'
+  +'<button class="btn" style="margin-top:14px;background:var(--terracota)" onclick="doDelPessoa()">Sim, excluir cadastro</button>'
+  +'<button class="btn sec" style="margin-top:10px" onclick="_backCad()">Cancelar</button>'
+  +'<div class="connect">Confirmação de segurança</div></div>'; };
+function doDelPessoa(){ var k=window.DEL_PESSOA; if(window.Domus){ var del=Domus.get('cadDel')||[]; if(del.indexOf(k)<0) del.push(k); Domus.set('cadDel',del); } toast('Cadastro excluído'); _backCad(); }
 function setCadnT(v){ window.CADN_T=v; render('gcadnovo'); }
 GSCREENS.gcadnovo=function(){ const tp=window.CADN_T||'unidades';
   const seg=`<div class="seg"><button class="${tp==='unidades'?'on':''}" onclick="setCadnT('unidades')">Unidade</button><button class="${tp==='pessoas'?'on':''}" onclick="setCadnT('pessoas')">Pessoa</button><button class="${tp==='veiculos'?'on':''}" onclick="setCadnT('veiculos')">Veículo</button><button class="${tp==='animais'?'on':''}" onclick="setCadnT('animais')">Animal</button></div>`;
@@ -1050,14 +1084,7 @@ function gEntregaRetirar(id){ if(window.Domus) Domus.update('entregas',a=>a.map(
 let GSGC_SEC='visao';
 /* URL pública do SGC web (GitHub Pages). Atualize aqui se mudar de host. */
 var SGC_WEB='https://felipeberger1999.github.io/Domus/Domus%20SGC.html';
-function openSGC(sec){ GSGC_SEC=sec||'visao';
-  try{ localStorage.setItem('domus_auth', JSON.stringify({cpf:'11111111111',condo:'Condomínio Felipe II'})); }catch(e){}
-  var url=SGC_WEB+(sec?('#'+sec):'');
-  // App nativo (WebView) → abre no NAVEGADOR do celular
-  if(window.ReactNativeWebView && window.ReactNativeWebView.postMessage){ try{ window.ReactNativeWebView.postMessage(JSON.stringify({type:'openURL',url:url})); }catch(e){} return; }
-  // Navegador (versão web) → abre em nova aba
-  try{ var op=window.__openExt||window.open; var w=op?op.call(window,url,'_blank'):null; if(!w){ location.href=url; } }catch(e){ try{ location.href=url; }catch(_){} }
-}
+function openSGC(sec){ try{ toast('Esta função roda no computador. Entre através de um computador e utilize a versão online do SGC.'); }catch(e){} }
 function sgcNav(){ try{ const f=document.getElementById('gsgc-iframe'); if(f&&f.contentWindow&&f.contentWindow.nav) f.contentWindow.nav(GSGC_SEC); }catch(e){} }
 GSCREENS.gsgc=function(){ const T={visao:'Visão Geral',cadastro:'Cadastro',assembleias:'Assembleias',pagar:'Contas a Pagar',receber:'Contas a Receber',resultado:'Resultado Contábil',previsao:'Previsão',dp:'Departamento Pessoal',avisos:'Avisos',portaria:'Portaria & Reservas'}; return `<div style="display:flex;flex-direction:column;height:100%"><div class="gsgc-bar2"><button class="scr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"></path></svg></button><div><div style="font-family:var(--serif);font-weight:560;font-size:16px">SGC completo</div><div class="muted" style="font-size:11px">${T[GSGC_SEC]||''} · edição + chat IA</div></div></div><iframe id="gsgc-iframe" class="gsgc-frame2" src="Domus SGC.html" onload="sgcNav()"></iframe></div>`; };
 
