@@ -1,0 +1,6 @@
+DOMUS — versão web (App do morador/gestor + SGC)
+=================================================
+
+PUBLICAR (sem login): https://app.netlify.com/drop → arraste esta pasta.
+USAR: abra o link no celular; senha demo. Atalhos: Morador / Gestor / Gestor + Morador.
+No Gestor, toque em "SGC completo" para abrir o sistema web.

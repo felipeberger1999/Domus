@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Domus SGC">
+<meta name="theme-color" content="#F3EDE3">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
+<title>Domus · SGC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sgc/app.css">
+</head>
+<body>
+
+<div id="auth" class="auth">
+  <div class="auth-bg"></div>
+
+  <section class="auth-card" id="auth-login">
+    <div class="auth-brand"><span class="mk"><svg class="portal" viewBox="0 0 100 100"><path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" stroke-width="9"></path><path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" stroke-width="9"></path></svg></span><div><div class="wm">Domus</div><div class="sb">SGC · Portal de acesso</div></div></div>
+    <h1>Bem-vindo de volta</h1>
+    <p class="auth-sub">Acesse com seu CPF — seu perfil é definido automaticamente pelo cadastro.</p>
+    <form onsubmit="return authEntrar(event)" autocomplete="off">
+      <div class="field"><label>CPF</label><input id="au-cpf" class="inp" placeholder="000.000.000-00" inputmode="numeric" autocomplete="off" oninput="authCpfInput(this)"></div>
+      <div class="au-role" id="au-role" hidden><span class="status-dot done"></span> Perfil detectado: <b id="au-role-nm"></b></div>
+      <div class="field"><label>Senha</label><input id="au-senha" class="inp" type="password" placeholder="••••••••" value="demo"></div>
+      <div class="au-err" id="au-err" hidden>CPF não encontrado. Use um dos acessos de demonstração abaixo.</div>
+      <button class="btn primary au-go" type="submit">Entrar</button>
+    </form>
+    <div class="au-demo"><span class="lbl">Acessos de demonstração</span>
+      <div class="au-chips">
+        <button type="button" class="au-chip" onclick="authFill('111.111.111-11')"><b>Síndico</b><span>Helena Martins</span></button>
+        <button type="button" class="au-chip" onclick="authFill('222.222.222-22')"><b>Morador</b><span>Carlos Mendes</span></button>
+        <button type="button" class="au-chip" onclick="authFill('333.333.333-33')"><b>Funcionário</b><span>Antônio Ferreira</span></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="auth-card wide" id="auth-condo" hidden>
+    <div class="auth-brand"><span class="mk"><svg class="portal" viewBox="0 0 100 100"><path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" stroke-width="9"></path><path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" stroke-width="9"></path></svg></span><div><div class="wm">Domus</div><div class="sb">SGC · Gestão</div></div></div>
+    <div class="au-greet"><span class="av" id="au-greet-av">HM</span><div><div class="au-greet-nm" id="au-greet-nm">Helena Martins</div><div class="au-greet-role" id="au-greet-role">Síndica</div></div></div>
+    <h1>Selecione o condomínio</h1>
+    <p class="auth-sub">Escolha qual condomínio da sua carteira deseja analisar agora.</p>
+    <div class="condo-grid" id="au-condo-grid"></div>
+    <button class="btn ghost" type="button" onclick="authVoltarLogin()">&larr; Trocar usuário</button>
+  </section>
+
+  <section class="auth-card" id="auth-role" hidden>
+    <div class="auth-brand"><span class="mk"><svg class="portal" viewBox="0 0 100 100"><path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" stroke-width="9"></path><path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" stroke-width="9"></path></svg></span><div><div class="wm">Domus</div><div class="sb">SGC · Portal de acesso</div></div></div>
+    <div class="role-ic"><svg class="portal" viewBox="0 0 100 100"><path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" stroke-width="9"></path><path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" stroke-width="9"></path></svg></div>
+    <h1 id="au-role-h">Você entrou como Morador</h1>
+    <p class="auth-sub" id="au-role-p"></p>
+    <div class="role-actions"><button class="btn" type="button" onclick="authVoltarLogin()">&larr; Voltar ao login</button><button class="btn primary" type="button" onclick="authDemoSindico()">Explorar o portal do gestor (demo)</button></div>
+  </section>
+</div>
+
+<div class="app">
+<aside class="sidebar">
+    <div class="brand"><span class="mark"><svg width="22" height="22" viewBox="0 0 100 100"><path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" fill="none" stroke="#C05F3C" stroke-width="9" stroke-linecap="round"/><path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" fill="none" stroke="#C05F3C" stroke-width="9" stroke-linecap="round"/></svg></span><div><div class="wordmark">Domus</div><div class="sub">SGC · Gestão</div></div></div>
+    <div class="condo-chip"><div class="nm">Condomínio Felipe II</div><div class="meta">Portal do gestor · 100 unidades</div></div>
+    <nav class="nav" id="nav">
+      <a data-sec="visao"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Visão Geral</a>
+      <a data-sec="receber"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7 7 7-7"/></svg> Contas a Receber</a>
+      <a data-sec="pagar"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 5v14"/><path d="M19 12l-7-7-7 7"/></svg> Contas a Pagar</a>
+      <a data-sec="resultado"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 16v-4M12 16v-7M16 16v-2"/></svg> Resultado Contábil</a>
+      <a data-sec="previsao"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg> Previsão Orçamentária</a>
+      <a data-sec="dp"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M17.5 14.5A5.5 5.5 0 0 1 21 20"/></svg> Departamento Pessoal</a>
+      <a data-sec="assembleias"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/><path d="M9 13h7M9 17h7"/></svg> Atas & Assembleias</a>
+      <a data-sec="avisos"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M10 5a2 2 0 1 1 4 0v.4a7 7 0 0 1 4 6.3V15l1.5 2.5H4.5L6 15v-3.3a7 7 0 0 1 4-6.3z"/><path d="M9.5 21h5"/></svg> Avisos</a>
+      <a data-sec="cadastro"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg> Cadastro</a>
+      <a data-sec="portaria"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 21h18M5 21V8l7-4 7 4v13"/><path d="M9 21v-6h6v6"/></svg> Portaria &amp; Reservas</a>
+    </nav>
+    <div class="foot"><span class="dot">●</span> Operado por agentes Domus<br><button class="reset" onclick="resetar()">↺ Reiniciar mockup</button> <button class="sair" onclick="authLogout()">⎋ Sair</button></div>
+  </aside>
+  <div class="sb-scrim" id="sb-scrim" onclick="toggleSidebar()"></div>
+  <main class="main">
+    <header class="topbar">
+      <button class="tb-burger" onclick="toggleSidebar()" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+      <button class="tb-switch" title="Trocar condomínio" onclick="authTrocarCondo()">Condomínio Felipe II <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"></path></svg></button>
+      <div class="tb-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg> Buscar unidade, morador, lançamento…</div>
+      <div class="tb-right">
+        <button class="tb-appr" id="tb-appr" onclick="nav('pagar')"><span class="status-dot wait"></span> <span class="n">2 aprovações</span></button>
+        <button class="tb-icon" title="Notificações"><svg viewBox="0 0 24 24"><path d="M10 5a2 2 0 1 1 4 0v.4a7 7 0 0 1 4 6.3V15l1.5 2.5H4.5L6 15v-3.3a7 7 0 0 1 4-6.3z"></path><path d="M9.5 21h5"></path></svg><span class="nd"></span></button>
+        <span class="tb-av" id="tb-av" title="Sair da conta" onclick="authLogout()">HM</span>
+      </div>
+    </header>
+    <div class="page-head"><h1 id="pg-title"></h1><p id="pg-sub"></p></div>
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<div class="modal-bg" id="modal-pessoa"><div class="modal">
+  <div class="head"><h2 id="mp-titulo">Cadastrar pessoa</h2><button class="x" onclick="fecharPessoa()">&times;</button></div>
+  <form onsubmit="return salvarPessoa(event)"><div class="body"><input type="hidden" id="f-id">
+    <div class="form-grid">
+      <div class="field full"><label>Nome completo</label><input class="inp" id="f-nome" required></div>
+      <div class="field"><label>Unidade</label><select class="inp" id="f-unidade"></select></div>
+      <div class="field"><label>Tipo</label><select class="inp" id="f-tipo"><option value="morador">Morador</option><option value="inquilino">Inquilino</option><option value="visitante">Visitante</option></select></div>
+      <div class="field"><label>Telefone</label><input class="inp" id="f-telefone" placeholder="+55 11 ..."></div>
+      <div class="field"><label>Email</label><input class="inp" id="f-email" type="email"></div>
+      <div class="field"><label>CPF</label><input class="inp" id="f-cpf" placeholder="000.000.000-00"></div>
+      <div class="field"><label>Acesso (sistemas linkados)</label><select class="inp" id="f-acesso"><option>Morador</option><option>Gestor</option><option>Funcionário</option><option>Sem acesso</option></select></div>
+    </div>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharPessoa()">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-veiculo"><div class="modal">
+  <div class="head"><h2 id="ve-titulo">Cadastrar veículo</h2><button class="x" onclick="fecharVeiculo()">&times;</button></div>
+  <form onsubmit="return salvarVeiculo(event)"><div class="body"><input type="hidden" id="ve-id">
+    <div class="form-grid">
+      <div class="field full"><label>Dono (pessoa)</label><select class="inp" id="ve-morador" required></select></div>
+      <div class="field"><label>Tipo / modelo</label><input class="inp" id="ve-modelo" placeholder="Ex.: Honda Civic" required></div>
+      <div class="field"><label>Placa</label><input class="inp" id="ve-placa" placeholder="ABC1D23"></div>
+      <div class="field full"><label>Vaga de garagem</label><select class="inp" id="ve-vaga"></select></div>
+    </div>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharVeiculo()">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-animal"><div class="modal">
+  <div class="head"><h2 id="an-titulo">Cadastrar animal</h2><button class="x" onclick="fecharAnimal()">&times;</button></div>
+  <form onsubmit="return salvarAnimal(event)"><div class="body"><input type="hidden" id="an-id">
+    <div class="form-grid">
+      <div class="field full"><label>Dono (pessoa)</label><select class="inp" id="an-morador" required></select></div>
+      <div class="field full"><label>Nome do animal</label><input class="inp" id="an-nome" placeholder="Ex.: Rex" required></div>
+      <div class="field"><label>Espécie</label><select class="inp" id="an-especie"><option>Cão</option><option>Gato</option><option>Ave</option><option>Outro</option></select></div>
+      <div class="field"><label>Porte</label><select class="inp" id="an-porte"><option>Pequeno</option><option>Médio</option><option>Grande</option></select></div>
+    </div>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharAnimal()">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-convocar"><div class="modal">
+  <div class="head"><h2>Convocar assembleia</h2><button class="x" onclick="fecharConvocar()">&times;</button></div>
+  <form onsubmit="return salvarConvocar(event)"><div class="body">
+    <div class="form-grid">
+      <div class="field full"><label>Título</label><input class="inp" id="cv-titulo" placeholder="Ex.: AGE — Aprovação de obra" required></div>
+      <div class="field"><label>Tipo</label><select class="inp" id="cv-tipo"><option value="ordinaria">Ordinária</option><option value="extraordinaria">Extraordinária</option></select></div>
+      <div class="field"><label>Data</label><input class="inp" id="cv-data" type="date"></div>
+      <div class="field full"><label>Local</label><input class="inp" id="cv-local" placeholder="Ex.: Salão de festas"></div>
+      <div class="field full"><label>Pauta</label><textarea class="inp" id="cv-pauta" rows="3" placeholder="1) ...; 2) ..."></textarea></div>
+    </div>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharConvocar()">Cancelar</button><button type="submit" class="btn primary">Convocar e enviar aviso</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-aviso"><div class="modal">
+  <div class="head"><h2 id="av-titulo-h">Novo aviso</h2><button class="x" onclick="fecharAviso()">&times;</button></div>
+  <form onsubmit="return salvarAviso(event)"><div class="body"><input type="hidden" id="av-id">
+    <div class="form-grid">
+      <div class="field full"><label>Título</label><input class="inp" id="av-titulo" placeholder="Ex.: Manutenção dos elevadores" required></div>
+      <div class="field full"><label>Público</label><select class="inp" id="av-publico"><option>Todos</option><option>Moradores</option><option>Funcionários</option></select></div>
+      <div class="field full"><label>Mensagem</label><textarea class="inp" id="av-msg" rows="4" placeholder="Texto do comunicado…" required></textarea></div>
+    </div>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharAviso()">Cancelar</button><button type="submit" class="btn primary">Publicar aviso</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-unidade"><div class="modal">
+  <div class="head"><h2 id="mu-titulo">Cadastrar unidade</h2><button class="x" onclick="fecharUnidade()">&times;</button></div>
+  <form onsubmit="return salvarUnidade(event)"><div class="body"><input type="hidden" id="u-id">
+    <div class="form-grid">
+      <div class="field"><label>Número</label><input class="inp" id="u-num" placeholder="Ex.: 103" required></div>
+      <div class="field"><label>Bloco</label><input class="inp" id="u-bloco" placeholder="Ex.: A"></div>
+    </div>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharUnidade()">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-regua"><div class="modal">
+  <div class="head"><h2>Régua de cobrança</h2><button class="x" onclick="fecharRegua()">&times;</button></div>
+  <form onsubmit="return salvarRegua(event)"><div class="body">
+    <p class="muted" style="font-size:12.5px;margin:0 0 12px">Defina as etapas que o agente de Cobrança executa. "Dias" é relativo ao vencimento (negativo = antes · 0 = no vencimento · positivo = depois).</p>
+    <div id="regua-rows" style="display:flex;flex-direction:column;gap:12px"></div>
+    <button type="button" class="btn sm" style="margin-top:12px" onclick="addEtapaRow()">+ Adicionar etapa</button>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharRegua()">Cancelar</button><button type="submit" class="btn primary">Salvar régua</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-banco"><div class="modal">
+  <div class="head"><h2 id="bk-titulo">Adicionar conta bancária</h2><button class="x" onclick="fecharBanco()">&times;</button></div>
+  <form onsubmit="return salvarBanco(event)"><div class="body"><input type="hidden" id="bk-id">
+    <div class="form-grid">
+      <div class="field full"><label>Banco</label><input class="inp" id="bk-banco" placeholder="Ex.: Banco do Brasil" required></div>
+      <div class="field"><label>Agência</label><input class="inp" id="bk-ag" placeholder="0000-0"></div>
+      <div class="field"><label>Conta</label><input class="inp" id="bk-conta" placeholder="00000-0"></div>
+      <div class="field"><label>Tipo</label><select class="inp" id="bk-tipo"><option>Corrente</option><option>Poupança</option></select></div>
+      <div class="field"><label>Titular</label><input class="inp" id="bk-titular" placeholder="Condomínio Felipe II"></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:14px 0 0">A ordem de prioridade é definida na lista (use as setas). A conta no topo é a principal para os pagamentos.</p>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharBanco()">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
+<button id="chat-fab" class="chat-fab" onclick="chatToggle()"><span class="av"><svg class="portal" viewBox="0 0 100 100"><path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" stroke-width="10"></path><path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" stroke-width="10"></path></svg></span><span class="lbl">Assistente</span></button>
+<div id="chat-scrim" class="chat-scrim" onclick="chatToggle(false)"></div>
+<aside id="chat" class="chat" aria-label="Assistente Domus">
+  <header class="chat-head">
+    <span class="av"><svg class="portal" viewBox="0 0 100 100"><path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" stroke-width="10"></path><path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" stroke-width="10"></path></svg></span>
+    <div><b>Assistente Domus</b><div class="st"><span class="dot"></span> Agente operacional · online</div></div>
+    <button class="chat-new" onclick="chatReset()" title="Nova conversa"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg></button>
+    <button class="chat-x" onclick="chatToggle(false)" aria-label="Fechar">&times;</button>
+  </header>
+  <div class="chat-body" id="chat-body"></div>
+  <div class="chat-drop" id="chat-drop"><div><svg viewBox="0 0 24 24"><path d="M12 16V4"></path><path d="M7 9l5-5 5 5"></path><path d="M5 20h14"></path></svg>Solte o documento ou imagem aqui</div></div>
+  <div class="chat-suggest" id="chat-suggest"></div>
+  <form class="chat-composer" onsubmit="return chatSend(event)" autocomplete="off">
+    <div class="chat-attach-wrap">
+      <button type="button" class="chat-attach" onclick="chatAttachMenu()" title="Anexar"><svg viewBox="0 0 24 24"><path d="M21.4 11.05l-8.5 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.33 3.33 0 0 1 4.71 4.71l-8.5 8.49a1.67 1.67 0 0 1-2.36-2.36l7.79-7.78"></path></svg></button>
+      <div class="chat-menu" id="chat-menu" hidden>
+        <button type="button" onclick="chatPick('cam')"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Tirar foto ao vivo</button>
+        <button type="button" onclick="chatPick('file')"><svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M13 2v7h7"></path></svg> Anexar documento</button>
+      </div>
+    </div>
+    <input id="chat-input" placeholder="Pergunte algo ou descreva uma conta…">
+    <button type="submit" class="chat-go" title="Enviar"><svg viewBox="0 0 24 24"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg></button>
+    <input type="file" id="chat-file" accept="image/*,.pdf" hidden onchange="chatFile(this)">
+    <input type="file" id="chat-cam" accept="image/*" capture="environment" hidden onchange="chatFile(this)">
+  </form>
+</aside>
+
+<script src="sgc/bridge.js"></script>
+<script src="sgc/app.js"></script>
+<script src="sgc/auth.js"></script>
+<script src="sgc/chat.js"></script>
+<script>
+/* ====== DOMUS NATIVE: evita travar em downloads dentro do WebView ====== */
+(function(){
+  try{ window.print=function(){}; }catch(e){}
+  try{ window.open=function(){ try{ if(typeof toast==='function') toast('Gerar/baixar PDF entra na versão final.'); }catch(e){} return null; }; }catch(e){}
+})();
+</script>
+</body>
+</html>

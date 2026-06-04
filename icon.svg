@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" role="img" aria-label="Domus">
+  
+  <path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" fill="none" stroke="#C05F3C" stroke-width="9" stroke-linecap="round"></path>
+  
+  <path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" fill="none" stroke="#C05F3C" stroke-width="9" stroke-linecap="round"></path>
+</svg>
