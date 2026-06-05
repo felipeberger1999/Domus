@@ -1,0 +1,111 @@
+/* ============================================================
+   Domus · Central de Controle (CCD) — estilos específicos.
+   Reaproveita os tokens e componentes do SGC (sgc/app.css).
+   ============================================================ */
+
+/* sidebar com leve acento de "sala de controle" */
+.ccd-side{background:linear-gradient(176deg,#1C2A26 0%,#20302B 48%,#2E5A4F 230%)}
+.ccd-side .nav a.active{background:var(--pinho);box-shadow:0 6px 18px rgba(46,90,79,.45)}
+.condo-chip.ccd-op .nm{display:flex;align-items:center;gap:8px}
+.condo-chip.ccd-op{background:rgba(255,255,255,.06)}
+
+/* topbar identidade */
+.ccd-ident{display:flex;align-items:center;gap:10px;flex:1}
+.badge-op{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--pinho);background:#E7F2EC;border:1px solid #c6e4d6;border-radius:999px;padding:6px 13px}
+.ccd-stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;padding-right:4px}
+.ccd-stat b{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--tinta)}
+.ccd-stat span{font-size:10.5px;color:var(--musgo)}
+
+/* pills de status */
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;border-radius:999px;padding:3px 10px;border:1px solid transparent}
+.pill:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ativo{color:#1f7a45;background:#E7F5EC;border-color:#bfe6cd}
+.pill.onboarding{color:#9a6a16;background:#FBF1D8;border-color:#ecd79a}
+.pill.pausado{color:#9a3d2a;background:#F6E2DA;border-color:#e6c0b0}
+
+/* grade de condomínios */
+.ccd-condo{display:flex;flex-direction:column;gap:14px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.ccd-condo:hover{border-color:var(--pinho-claro);box-shadow:var(--sombra)}
+.ccd-condo .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ccd-condo h4{font-family:var(--serif);font-size:18px;font-weight:560;margin:0;line-height:1.15}
+.ccd-condo .loc{font-size:12.5px;color:var(--musgo);margin-top:3px}
+.ccd-condo .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-top:1px solid var(--linha);padding-top:12px}
+.ccd-condo .mini .k{font-size:10.5px;color:var(--musgo);text-transform:uppercase;letter-spacing:.05em}
+.ccd-condo .mini .v{font-size:15px;font-weight:600;margin-top:2px}
+.ccd-condo .v.alerta{color:var(--terracota)}
+.ccd-condo .foot-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ccd-plano{font-size:11px;font-weight:600;color:var(--musgo);background:var(--areia);border:1px solid var(--linha);border-radius:8px;padding:3px 9px}
+
+/* abas da ficha */
+.ccd-tabs{display:flex;gap:4px;border-bottom:1px solid var(--linha);margin-bottom:20px;flex-wrap:wrap}
+.ccd-tabs .tab{padding:10px 16px;font-size:13.5px;font-weight:600;color:var(--musgo);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;border-top:none;border-left:none;border-right:none}
+.ccd-tabs .tab:hover{color:var(--tinta)}
+.ccd-tabs .tab.active{color:var(--pinho);border-bottom-color:var(--pinho)}
+
+/* cabeçalho da ficha */
+.ccd-fh{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.ccd-fh .back{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--musgo);cursor:pointer;background:none;border:none;padding:0;margin-bottom:8px}
+.ccd-fh h2{font-family:var(--serif);font-size:24px;font-weight:560;margin:0}
+.ccd-fh .sub{font-size:13px;color:var(--musgo);margin-top:3px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* lista de toggles (features) */
+.ccd-feat{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--linha)}
+.ccd-feat:last-child{border-bottom:none}
+.ccd-feat .lbl{font-size:14px;font-weight:500}
+.ccd-feat .desc{font-size:12px;color:var(--musgo);margin-top:2px}
+
+/* switch */
+.sw{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw .tk{position:absolute;inset:0;background:var(--linha);border-radius:999px;transition:.2s;cursor:pointer}
+.sw .tk:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sw input:checked + .tk{background:var(--pinho)}
+.sw input:checked + .tk:before{transform:translateX(18px)}
+
+/* agentes */
+.ccd-agent{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px solid var(--linha)}
+.ccd-agent:last-child{border-bottom:none}
+.ccd-agent .ic{flex:0 0 42px;height:42px;border-radius:11px;background:var(--areia);border:1px solid var(--linha);display:grid;place-items:center;color:var(--pinho)}
+.ccd-agent .ic svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2}
+.ccd-agent .bd{flex:1;min-width:0}
+.ccd-agent .nm{font-weight:600;font-size:14.5px}
+.ccd-agent .ds{font-size:12.5px;color:var(--musgo);margin-top:2px}
+.ccd-agent .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.ccd-agent .right{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+
+/* segmented (autonomia) */
+.seg{display:inline-flex;border:1px solid var(--linha);border-radius:9px;overflow:hidden;background:var(--areia)}
+.seg button{font-size:12px;font-weight:600;color:var(--musgo);background:none;border:none;padding:7px 12px;cursor:pointer;border-right:1px solid var(--linha)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--pinho);color:#fff}
+.seg button.on.warn{background:var(--ambar)}
+.seg button.on.off{background:var(--musgo)}
+
+/* params */
+.ccd-params{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.ccd-params .field{display:flex;flex-direction:column;gap:5px}
+.ccd-params label{font-size:12px;color:var(--musgo);font-weight:500}
+
+/* onboarding bar */
+.ob-track{height:9px;background:var(--areia);border:1px solid var(--linha);border-radius:999px;overflow:hidden}
+.ob-fill{height:100%;background:var(--ambar);border-radius:999px}
+
+/* key-value (resumo) */
+.kv{display:flex;justify-content:space-between;gap:14px;font-size:13px;padding:8px 0;border-bottom:1px solid var(--linha)}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--musgo)}
+.kv .v{font-weight:600;text-align:right}
+
+/* feed */
+.ccd-feed{display:flex;flex-direction:column;gap:2px}
+.ccd-feed .it{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--linha)}
+.ccd-feed .it:last-child{border-bottom:none}
+.ccd-feed .ag{flex:0 0 92px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--pinho);padding-top:1px}
+.ccd-feed .tx{flex:1;font-size:13px}
+.ccd-feed .tx .det{color:var(--musgo);font-size:12px;margin-top:1px}
+.ccd-feed .tm{flex:0 0 auto;font-size:11.5px;color:var(--musgo-claro)}
+
+@media(max-width:1100px){
+  .ccd-params{grid-template-columns:1fr}
+  .ccd-feed .ag{flex-basis:74px}
+}

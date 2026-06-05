@@ -67,7 +67,6 @@
     <nav class="nav" id="nav">
       <a data-sec="visao"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Visão Geral</a>
       <a data-sec="receber"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7 7 7-7"/></svg> Contas a Receber</a>
-      <a data-sec="cobranca"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 4h16v12H5.2L4 17.5z"/><path d="M8 9h8M8 12h5"/></svg> Agente de Cobrança</a>
       <a data-sec="pagar"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 5v14"/><path d="M19 12l-7-7-7 7"/></svg> Contas a Pagar</a>
       <a data-sec="resultado"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 16v-4M12 16v-7M16 16v-2"/></svg> Resultado Contábil</a>
       <a data-sec="previsao"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg> Previsão Orçamentária</a>
@@ -198,25 +197,6 @@
   <div class="foot"><button type="button" class="btn primary" onclick="fecharResumo()">Fechar</button></div>
 </div></div>
 
-<div class="modal-bg" id="modal-cob-msg"><div class="modal" style="max-width:640px">
-  <div class="head"><h2 class="cm-title">Prévia da mensagem</h2><button class="x" onclick="fecharCobMsg()">&times;</button></div>
-  <div class="body"><p class="cm-sub muted" style="font-size:12.5px;margin:0 0 14px"></p><div class="cm-body"></div></div>
-  <div class="foot"><span class="cob-foot-test">🧪 Modo de teste — nada será enviado</span><button type="button" class="btn" onclick="fecharCobMsg()">Fechar</button><button type="button" class="btn primary" onclick="cobTesteAviso()">Enviar (desativado)</button></div>
-</div></div>
-
-<div class="modal-bg" id="modal-cob-tpl"><div class="modal" style="max-width:680px">
-  <div class="head"><h2>Mensagens da régua</h2><button class="x" onclick="fecharCobTpl()">&times;</button></div>
-  <form onsubmit="return salvarCobTpl(event)"><div class="body">
-    <div class="field full"><label>Etapa</label><select class="inp" id="cobtpl-sel" onchange="cobTplLoad()"></select></div>
-    <div class="field full" style="margin-top:12px"><label>Canais desta etapa</label>
-      <div style="display:flex;gap:18px;align-items:center"><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="cobtpl-eml"> E-mail</label><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="cobtpl-wpp"> WhatsApp</label></div></div>
-    <div class="field full" style="margin-top:12px"><label>Assunto do e-mail</label><input class="inp" id="cobtpl-assunto"></div>
-    <div class="field full" style="margin-top:12px"><label>Corpo do e-mail</label><textarea class="inp" id="cobtpl-email" rows="9" style="resize:vertical;font-family:inherit"></textarea></div>
-    <div class="field full" style="margin-top:12px"><label>Mensagem de WhatsApp</label><textarea class="inp" id="cobtpl-wppmsg" rows="6" style="resize:vertical;font-family:inherit"></textarea></div>
-    <div class="field full" style="margin-top:12px"><label>Variáveis (clique para inserir)</label><div id="cobtpl-vars" class="cob-vars"></div></div>
-  </div><div class="foot"><span class="cob-foot-test">Personalizadas por morador no envio</span><button type="button" class="btn" onclick="fecharCobTpl()">Cancelar</button><button type="submit" class="btn primary">Salvar mensagem</button></div></form>
-</div></div>
-
 <button id="chat-fab" class="chat-fab" onclick="chatToggle()"><span class="av"><svg class="portal" viewBox="0 0 100 100"><path d="M18 92 L18 46 A32 32 0 0 1 82 46 L82 92" stroke-width="10"></path><path d="M38 92 L38 56 A12 12 0 0 1 62 56 L62 92" stroke-width="10"></path></svg></span><span class="lbl">Assistente</span></button>
 <div id="chat-scrim" class="chat-scrim" onclick="chatToggle(false)"></div>
 <aside id="chat" class="chat" aria-label="Assistente Domus">
@@ -245,7 +225,6 @@
 </aside>
 
 <script src="sgc/bridge.js"></script>
-<script src="sgc/cobranca.js"></script>
 <script src="sgc/app.js"></script>
 <script src="sgc/auth.js"></script>
 <script src="sgc/chat.js"></script>
