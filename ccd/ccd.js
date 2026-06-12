@@ -152,8 +152,8 @@ function makeFeed(){
 var CCD_KEY='domus_ccd_v1';
 var CCD, FEED, SEC='visao', CUR=null, TAB='resumo';
 function condo(id){ return byId(CCD, id); }
-function ccdSave(){ try{ localStorage.setItem(CCD_KEY, JSON.stringify({v:1, condos:CCD, regua:COB_REGUA, feed:FEED})); }catch(e){} }
-function ccdLoad(){ try{ var s=JSON.parse(localStorage.getItem(CCD_KEY)||'null'); if(s && s.v===1 && s.condos && s.condos.length){ CCD=s.condos; if(s.regua && s.regua.length) COB_REGUA=s.regua; if(s.feed && s.feed.length) FEED=s.feed; return true; } }catch(e){} return false; }
+function ccdSave(){ try{ localStorage.setItem(CCD_KEY, JSON.stringify({v:2, condos:CCD, regua:COB_REGUA, feed:FEED})); }catch(e){} }
+function ccdLoad(){ try{ var s=JSON.parse(localStorage.getItem(CCD_KEY)||'null'); if(s && s.v===2 && s.condos && s.condos.length){ CCD=s.condos; if(s.regua && s.regua.length) COB_REGUA=s.regua; if(s.feed && s.feed.length) FEED=s.feed; return true; } }catch(e){} return false; }
 function addFeed(ag, condoNome, acao, det){
   var tm; try{ tm=new Date().toLocaleTimeString('pt-BR').slice(0,5); }catch(e){ tm='--:--'; }
   FEED.unshift({ag:ag, condo:condoNome, acao:acao, det:det, tm:tm});
@@ -164,7 +164,7 @@ function addFeed(ag, condoNome, acao, det){
 /* ---------- navegação ---------- */
 function nav(sec){ SEC=sec; CUR=null; setActive(sec); render(); fecharSidebar(); }
 function setActive(sec){ document.querySelectorAll('#nav a').forEach(function(a){ a.classList.toggle('active', a.dataset.sec===sec); }); }
-function abrirCondo(id){ CUR=id; SEC='condo'; TAB='resumo'; setActive('condos'); render(); window.scrollTo(0,0); }
+function abrirCondo(id, tab){ CUR=id; SEC='condo'; TAB=tab||'resumo'; setActive('condos'); render(); window.scrollTo(0,0); }
 function condoTab(t){ TAB=t; render(); }
 function ccdToggleSidebar(){ document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sb-scrim').classList.toggle('show'); }
 function fecharSidebar(){ document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sb-scrim').classList.remove('show'); }
@@ -172,10 +172,11 @@ function fecharSidebar(){ document.querySelector('.sidebar').classList.remove('o
 var TITLES={
   visao:['Visão Geral','Operação Domus — todos os condomínios sob gestão'],
   condos:['Condomínios','Carteira de condomínios e configuração individual'],
+  operacao:['Operação','Visão gerencial consolidada — cotas, aprovações, folha e comunicação de todos os condomínios'],
   agentes:['Agentes','Catálogo dos agentes Domus e seus padrões de operação'],
   gov:['Governança','Regras de aprovação, autonomia e permissões'],
   registros:['Registros','Auditoria de ações dos agentes e mudanças de configuração'],
-  condo:['Ficha do condomínio','Configuração do SGC, do App e dos agentes deste condomínio']
+  condo:['Ficha do condomínio','Gestão completa: pessoas, cotas, contas, contábil, comunicação e configurações']
 };
 
 /* ---------- render principal ---------- */
@@ -184,7 +185,7 @@ function render(){
   document.getElementById('pg-title').textContent=t[0];
   document.getElementById('pg-sub').textContent=t[1];
   var c=document.getElementById('content');
-  c.innerHTML=({visao:renderVisao,condos:renderCondos,condo:renderCondo,agentes:renderAgentes,gov:renderGov,registros:renderRegistros}[SEC]||renderVisao)();
+  c.innerHTML=({visao:renderVisao,condos:renderCondos,condo:renderCondo,operacao:renderOperacao,agentes:renderAgentes,gov:renderGov,registros:renderRegistros}[SEC]||renderVisao)();
   atualizarContadores();
 }
 function atualizarContadores(){
@@ -257,9 +258,9 @@ function renderCondo(){
     +'<h2>'+_esc(x.nome)+'</h2><div class="sub">'+pill(x.status)+' <span class="ccd-plano">'+x.plano+'</span> · '+_esc(x.cidade)+'/'+x.uf+' · '+x.unidades+' unidades · síndico '+_esc(x.sindico)+'</div></div>'
     +'<div style="display:flex;gap:8px"><button class="btn" onclick="abrirEditCondo(\''+x.id+'\')">✎ Editar dados</button>'+(x.sgcUrl?'<button class="btn" onclick="abrirSGC(\''+x.id+'\')">Abrir SGC ↗</button>':'<button class="btn" onclick="toast(\'SGC em provisionamento para este condomínio.\')">Abrir SGC ↗</button>')+'</div></div>';
   var tabs='<div class="ccd-tabs">'
-    +tab('resumo','Resumo')+tab('sgc','Configuração SGC')+tab('app','Configuração App')+tab('agentes','Agentes')
+    +tab('resumo','Resumo')+tab('pessoas','Pessoas')+tab('cotas','Cotas (CAR)')+tab('pagar','Contas a Pagar')+tab('contabil','Contábil')+tab('com','Comunicação')+tab('sgc','Config SGC')+tab('app','Config App')+tab('agentes','Agentes')
     +'</div>';
-  var body=({resumo:condoResumo, sgc:condoSGC, app:condoApp, agentes:condoAgentes}[TAB]||condoResumo)(x);
+  var body=({resumo:condoResumo, pessoas:condoPessoas, cotas:condoCotas, pagar:condoPagar, contabil:condoContabil, com:condoCom, sgc:condoSGC, app:condoApp, agentes:condoAgentes}[TAB]||condoResumo)(x);
   return head+tabs+body;
 }
 function tab(id,label){ return '<button class="tab'+(TAB===id?' active':'')+'" onclick="condoTab(\''+id+'\')">'+label+'</button>'; }
@@ -521,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function(){
   ccdSave();
   // navegação da sidebar (delegação de clique)
   document.getElementById('nav').addEventListener('click', function(e){ var a=e.target.closest('a'); if(a && a.dataset.sec) nav(a.dataset.sec); });
-  ['modal-regua-ccd','modal-msg-ccd','modal-prev-ccd','modal-novo-condo','modal-edit-condo'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('click', function(ev){ if(ev.target.id===id) el.classList.remove('open'); }); });
+  ['modal-regua-ccd','modal-msg-ccd','modal-prev-ccd','modal-novo-condo','modal-edit-condo','modal-morador-ccd','modal-func-ccd','modal-lancar-ccd','modal-aviso-ccd','modal-ata-ccd'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('click', function(ev){ if(ev.target.id===id) el.classList.remove('open'); }); });
   ['msgccd-email','msgccd-wppmsg','msgccd-assunto'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('focus', function(){ _msgLastFocus=id; }); });
   setActive('visao'); render();
 });

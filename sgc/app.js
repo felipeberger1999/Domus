@@ -1216,7 +1216,7 @@ document.addEventListener('click', function(e){ var s=document.getElementById('t
    (felipe2). Sem configuração da CCD (ex.: dentro do app), tudo fica ligado. */
 (function(){
   var cfg=null;
-  try{ var s=JSON.parse(localStorage.getItem('domus_ccd_v1')||'null'); if(s && s.v===1 && s.condos) cfg=s.condos.find(function(x){return x.id==='felipe2';})||null; }catch(e){}
+  try{ var s=JSON.parse(localStorage.getItem('domus_ccd_v1')||'null'); if(s && s.v===2 && s.condos) cfg=s.condos.find(function(x){return x.id==='felipe2';})||null; }catch(e){}
   if(!cfg) return;
   window.CCD_CONDO=cfg;
   // módulos desligados somem do menu

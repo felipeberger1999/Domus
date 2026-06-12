@@ -26,6 +26,7 @@
     <nav class="nav" id="nav">
       <a data-sec="visao"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Visão Geral</a>
       <a data-sec="condos"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M13 9h.01M9 13h.01M13 13h.01M9 17h4"/></svg> Condomínios</a>
+      <a data-sec="operacao"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a7.97 7.97 0 0 0 .1-6l-2.1.6a6 6 0 0 0-1.5-1.5l.6-2.1a8 8 0 0 0-6 0l.6 2.1a6 6 0 0 0-1.5 1.5L7.5 9a7.97 7.97 0 0 0 .1 6l2-.7a6 6 0 0 0 1.6 1.6l-.6 2a8 8 0 0 0 5.8 0l-.6-2a6 6 0 0 0 1.6-1.6z"/></svg> Operação</a>
       <a data-sec="agentes"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4M9 13h.01M15 13h.01"/></svg> Agentes</a>
       <a data-sec="gov"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg> Governança</a>
       <a data-sec="registros"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg> Registros</a>
@@ -113,6 +114,66 @@
   </div><div class="foot"><button type="button" class="btn danger-link" onclick="excluirCondo()">Excluir condomínio</button><span style="flex:1"></span><button type="button" class="btn" onclick="fecharModal('modal-edit-condo')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
 </div></div>
 
+<div class="modal-bg" id="modal-morador-ccd"><div class="modal" style="max-width:520px">
+  <div class="head"><h2>Editar morador</h2><button class="x" onclick="fecharModal('modal-morador-ccd')">&times;</button></div>
+  <form onsubmit="return salvarMoradorCcd(event)"><div class="body"><input type="hidden" id="mr-condo"><input type="hidden" id="mr-id">
+    <div class="form-grid">
+      <div class="field full"><label>Nome</label><input class="inp" id="mr-nome" required></div>
+      <div class="field"><label>Unidade</label><input class="inp" id="mr-unidade"></div>
+      <div class="field"><label>Tipo</label><select class="inp" id="mr-tipo"><option value="morador">Morador</option><option value="inquilino">Inquilino</option></select></div>
+      <div class="field"><label>Telefone</label><input class="inp" id="mr-tel"></div>
+      <div class="field"><label>E-mail</label><input class="inp" id="mr-email"></div>
+    </div>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharModal('modal-morador-ccd')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-func-ccd"><div class="modal" style="max-width:520px">
+  <div class="head"><h2>Editar funcionário</h2><button class="x" onclick="fecharModal('modal-func-ccd')">&times;</button></div>
+  <form onsubmit="return salvarFuncCcd(event)"><div class="body"><input type="hidden" id="fc-condo"><input type="hidden" id="fc-id">
+    <div class="form-grid">
+      <div class="field full"><label>Nome</label><input class="inp" id="fc-nome" required></div>
+      <div class="field"><label>Cargo</label><input class="inp" id="fc-cargo"></div>
+      <div class="field"><label>Salário (R$)</label><input class="inp" id="fc-salario" type="number"></div>
+    </div>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharModal('modal-func-ccd')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-lancar-ccd"><div class="modal" style="max-width:560px">
+  <div class="head"><h2>Lançar conta a pagar</h2><button class="x" onclick="fecharModal('modal-lancar-ccd')">&times;</button></div>
+  <form onsubmit="return salvarLancarCcd(event)"><div class="body"><input type="hidden" id="lc-condo">
+    <div class="form-grid">
+      <div class="field full"><label>Descrição</label><input class="inp" id="lc-desc" placeholder="Ex.: Reparo do portão da garagem" required></div>
+      <div class="field"><label>Fornecedor</label><input class="inp" id="lc-forn" placeholder="Nome do fornecedor"></div>
+      <div class="field"><label>Grupo</label><select class="inp" id="lc-grupo"><option>Manutenção</option><option>Utilities</option><option>Pessoal</option><option>Administradora</option><option>Impostos</option><option>Outros</option></select></div>
+      <div class="field"><label>Valor (R$)</label><input class="inp" id="lc-valor" type="number" step="0.01" required></div>
+      <div class="field"><label>Vencimento</label><input class="inp" id="lc-venc" type="date" value="2026-06-20"></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:14px 0 0">O lançamento entra como <b>pendente</b> na fila de aprovação deste condomínio.</p>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharModal('modal-lancar-ccd')">Cancelar</button><button type="submit" class="btn primary">Lançar conta</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-aviso-ccd"><div class="modal" style="max-width:600px">
+  <div class="head"><h2 id="av-ccd-h">Novo aviso</h2><button class="x" onclick="fecharModal('modal-aviso-ccd')">&times;</button></div>
+  <form onsubmit="return salvarAvisoCcd(event)"><div class="body"><input type="hidden" id="av-ccd-condo">
+    <div class="field full" id="av-ccd-dest-wrap"><label>Enviar para</label><div id="av-ccd-condos" class="av-condos"></div></div>
+    <div class="form-grid" style="margin-top:12px">
+      <div class="field full"><label>Título</label><input class="inp" id="av-ccd-titulo" placeholder="Ex.: Manutenção da caixa d'água" required></div>
+      <div class="field full"><label>Público</label><select class="inp" id="av-ccd-publico"><option>Todos</option><option>Moradores</option><option>Funcionários</option></select></div>
+      <div class="field full"><label>Mensagem</label><textarea class="inp" id="av-ccd-msg" rows="5" style="resize:vertical;font-family:inherit" required></textarea></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:14px 0 0">O aviso é publicado no SGC e no App dos moradores dos condomínios selecionados.</p>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharModal('modal-aviso-ccd')">Cancelar</button><button type="submit" class="btn primary">Publicar aviso</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-ata-ccd"><div class="modal" style="max-width:620px">
+  <div class="head"><h2 id="ata-ccd-h">Registrar ata</h2><button class="x" onclick="fecharModal('modal-ata-ccd')">&times;</button></div>
+  <form onsubmit="return salvarAtaCcd(event)"><div class="body"><input type="hidden" id="ata-ccd-condo"><input type="hidden" id="ata-ccd-id">
+    <p class="muted" id="ata-ccd-sub" style="font-size:12.5px;margin:0 0 12px"></p>
+    <div class="field full"><label>Texto da ata</label><textarea class="inp" id="ata-ccd-texto" rows="9" style="resize:vertical;font-family:inherit" placeholder="Registre as deliberações da assembleia…" required></textarea></div>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharModal('modal-ata-ccd')">Cancelar</button><button type="submit" class="btn primary">Registrar e publicar</button></div></form>
+</div></div>
+
+<script src="ccd/gerencial.js"></script>
 <script src="ccd/ccd.js"></script>
 </body>
 </html>
