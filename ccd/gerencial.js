@@ -77,7 +77,7 @@ function condoPessoas(x){
   var rows=lista.slice(0,200).map(function(m){
     return '<tr><td style="white-space:nowrap"><strong>'+_esc(m.unidade)+'</strong></td><td>'+_esc(m.nome)+'<div class="muted" style="font-size:11px">'+_esc(m.email)+'</div></td><td><span class="badge '+m.tipo+'">'+m.tipo+'</span></td><td style="white-space:nowrap">'+_esc(m.telefone)+'</td><td class="num"><button class="btn sm" onclick="abrirMoradorCcd(\''+x.id+'\','+m.id+')">✎ Editar</button></td></tr>';
   }).join('');
-  var moradoresCard='<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Moradores · '+o.moradores.length+'</h3><input class="inp" id="pe-q" placeholder="Buscar por nome ou unidade…" style="max-width:280px" value="'+_esc(PE_Q)+'" oninput="pessoasBusca(this.value)"></div>'
+  var moradoresCard='<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Moradores · '+o.moradores.length+'</h3><div style="display:flex;gap:10px;align-items:center"><input class="inp" id="pe-q" placeholder="Buscar por nome ou unidade…" style="max-width:280px" value="'+_esc(PE_Q)+'" oninput="pessoasBusca(this.value)"><button class="btn primary sm" onclick="novoMoradorCcd(\''+x.id+'\')">+ Novo morador</button></div></div>'
     +'<div class="tblx" style="margin-top:10px"><table class="tbl" style="min-width:760px"><thead><tr><th>Unidade</th><th>Morador</th><th>Tipo</th><th>Telefone</th><th class="num">Ações</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +(lista.length>200?'<p class="muted" style="font-size:12px;margin-top:8px">Mostrando 200 de '+lista.length+' — refine a busca.</p>':'')+'</div>';
   var ativos=o.funcionarios.filter(function(f){return f.status==='ativo';});
@@ -86,39 +86,96 @@ function condoPessoas(x){
     return '<tr><td><strong>'+_esc(f.nome)+'</strong></td><td>'+_esc(f.cargo)+'</td><td class="num">'+brl(f.salario)+'</td><td style="white-space:nowrap">'+dataBRC(f.admissao)+'</td><td><span class="badge '+(f.status==='ativo'?'ativo':'demitido')+'">'+f.status+'</span></td><td class="num" style="white-space:nowrap"><button class="btn sm" onclick="abrirFuncCcd(\''+x.id+'\','+f.id+')">✎ Editar</button> '+(f.status==='ativo'?'<button class="btn sm" onclick="desligarFunc(\''+x.id+'\','+f.id+')">Desligar</button>':'')+'</td></tr>';
   }).join('');
   var sindicoCard='<div class="card span-4"><h3>Síndico(a)</h3>'+kv('Nome', x.sindico)+kv('Mandato', x.desde+' — atual')+kv('Contato', 'sindico@'+x.id+'.domus.app')+'<div style="margin-top:12px"><button class="btn sm" onclick="abrirEditCondo(\''+x.id+'\')">✎ Alterar síndico</button></div></div>';
-  var dpCard='<div class="card span-8"><div class="flex-between"><h3 style="margin:0">Funcionários & DP · folha '+brl(folha)+'/mês</h3><span class="muted" style="font-size:12px">'+ativos.length+' ativo(s)</span></div>'
+  var dpCard='<div class="card span-8"><div class="flex-between"><h3 style="margin:0">Funcionários & DP · folha '+brl(folha)+'/mês</h3><div style="display:flex;gap:10px;align-items:center"><span class="muted" style="font-size:12px">'+ativos.length+' ativo(s)</span><button class="btn primary sm" onclick="novoFuncCcd(\''+x.id+'\')">+ Novo funcionário</button></div></div>'
     +'<div class="tblx" style="margin-top:10px"><table class="tbl" style="min-width:680px"><thead><tr><th>Nome</th><th>Cargo</th><th class="num">Salário</th><th>Admissão</th><th>Status</th><th class="num">Ações</th></tr></thead><tbody>'+fr+'</tbody></table></div></div>';
   return '<div class="grid">'+sindicoCard+dpCard+moradoresCard+'</div>';
+}
+function novoMoradorCcd(cid){
+  document.getElementById('mr-condo').value=cid; document.getElementById('mr-id').value='';
+  document.getElementById('mr-h').textContent='Novo morador';
+  document.getElementById('mr-del').style.display='none';
+  ['mr-nome','mr-unidade','mr-tel','mr-email'].forEach(function(i){ document.getElementById(i).value=''; });
+  document.getElementById('mr-tipo').value='morador';
+  abrirModal('modal-morador-ccd');
 }
 function abrirMoradorCcd(cid, mid){
   var m=oper(condo(cid)).moradores.find(function(z){return z.id===mid;}); if(!m) return;
   document.getElementById('mr-condo').value=cid; document.getElementById('mr-id').value=mid;
+  document.getElementById('mr-h').textContent='Editar morador';
+  document.getElementById('mr-del').style.display='';
   document.getElementById('mr-nome').value=m.nome; document.getElementById('mr-unidade').value=m.unidade;
   document.getElementById('mr-tipo').value=m.tipo; document.getElementById('mr-tel').value=m.telefone; document.getElementById('mr-email').value=m.email;
   abrirModal('modal-morador-ccd');
 }
 function salvarMoradorCcd(ev){
   ev.preventDefault();
-  var x=condo(document.getElementById('mr-condo').value); var m=oper(x).moradores.find(function(z){return z.id===parseInt(document.getElementById('mr-id').value);}); if(!m) return false;
-  m.nome=document.getElementById('mr-nome').value.trim()||m.nome; m.unidade=document.getElementById('mr-unidade').value.trim()||m.unidade;
+  var x=condo(document.getElementById('mr-condo').value); var o=oper(x);
+  var idv=document.getElementById('mr-id').value;
+  var nome=document.getElementById('mr-nome').value.trim(); if(!nome){ toast('Informe o nome.'); return false; }
+  if(!idv){
+    var nid=o.moradores.reduce(function(s,z){return Math.max(s,z.id);},0)+1;
+    o.moradores.unshift({id:nid, nome:nome, unidade:document.getElementById('mr-unidade').value.trim()||'—', tipo:document.getElementById('mr-tipo').value, telefone:document.getElementById('mr-tel').value.trim(), email:document.getElementById('mr-email').value.trim()});
+    addFeed('Cadastro', x.nome, 'Morador adicionado', nome+' incluído no cadastro pela equipe Domus');
+    fecharModal('modal-morador-ccd'); render(); toast(nome+' adicionado.');
+    return false;
+  }
+  var m=o.moradores.find(function(z){return z.id===parseInt(idv);}); if(!m) return false;
+  m.nome=nome; m.unidade=document.getElementById('mr-unidade').value.trim()||m.unidade;
   m.tipo=document.getElementById('mr-tipo').value; m.telefone=document.getElementById('mr-tel').value.trim(); m.email=document.getElementById('mr-email').value.trim();
   addFeed('Cadastro', x.nome, 'Morador atualizado', m.nome+' ('+m.unidade+') editado pela equipe Domus');
   fecharModal('modal-morador-ccd'); render(); toast('Cadastro de '+m.nome+' salvo.');
   return false;
 }
+function excluirMoradorCcd(){
+  var x=condo(document.getElementById('mr-condo').value); var o=oper(x);
+  var m=o.moradores.find(function(z){return z.id===parseInt(document.getElementById('mr-id').value);}); if(!m) return;
+  if(!confirm('Excluir o morador '+m.nome+' ('+m.unidade+') do cadastro?')) return;
+  if(!confirm('Tem certeza? Confirme novamente para excluir '+m.nome+'.')) return;
+  o.moradores=o.moradores.filter(function(z){return z.id!==m.id;});
+  addFeed('Cadastro', x.nome, 'Morador excluído', m.nome+' ('+m.unidade+') removido do cadastro pela equipe Domus');
+  fecharModal('modal-morador-ccd'); render(); toast(m.nome+' excluído do cadastro.');
+}
+function novoFuncCcd(cid){
+  document.getElementById('fc-condo').value=cid; document.getElementById('fc-id').value='';
+  document.getElementById('fc-h').textContent='Novo funcionário';
+  document.getElementById('fc-del').style.display='none';
+  document.getElementById('fc-nome').value=''; document.getElementById('fc-cargo').value=''; document.getElementById('fc-salario').value='';
+  abrirModal('modal-func-ccd');
+}
 function abrirFuncCcd(cid, fid){
   var f=oper(condo(cid)).funcionarios.find(function(z){return z.id===fid;}); if(!f) return;
   document.getElementById('fc-condo').value=cid; document.getElementById('fc-id').value=fid;
+  document.getElementById('fc-h').textContent='Editar funcionário';
+  document.getElementById('fc-del').style.display='';
   document.getElementById('fc-nome').value=f.nome; document.getElementById('fc-cargo').value=f.cargo; document.getElementById('fc-salario').value=f.salario;
   abrirModal('modal-func-ccd');
 }
 function salvarFuncCcd(ev){
   ev.preventDefault();
-  var x=condo(document.getElementById('fc-condo').value); var f=oper(x).funcionarios.find(function(z){return z.id===parseInt(document.getElementById('fc-id').value);}); if(!f) return false;
-  f.nome=document.getElementById('fc-nome').value.trim()||f.nome; f.cargo=document.getElementById('fc-cargo').value.trim()||f.cargo; f.salario=parseFloat(document.getElementById('fc-salario').value)||f.salario;
+  var x=condo(document.getElementById('fc-condo').value); var o=oper(x);
+  var idv=document.getElementById('fc-id').value;
+  var nome=document.getElementById('fc-nome').value.trim(); if(!nome){ toast('Informe o nome.'); return false; }
+  if(!idv){
+    var nid=o.funcionarios.reduce(function(s,z){return Math.max(s,z.id);},0)+1;
+    o.funcionarios.push({id:nid, nome:nome, cargo:document.getElementById('fc-cargo').value.trim()||'Auxiliar', salario:parseFloat(document.getElementById('fc-salario').value)||1800, status:'ativo', admissao:hojeISO()});
+    addFeed('DP', x.nome, 'Funcionário admitido', nome+' incluído na equipe — admissão encaminhada ao eSocial');
+    fecharModal('modal-func-ccd'); render(); toast(nome+' admitido.');
+    return false;
+  }
+  var f=o.funcionarios.find(function(z){return z.id===parseInt(idv);}); if(!f) return false;
+  f.nome=nome; f.cargo=document.getElementById('fc-cargo').value.trim()||f.cargo; f.salario=parseFloat(document.getElementById('fc-salario').value)||f.salario;
   addFeed('DP', x.nome, 'Funcionário atualizado', f.nome+' ('+f.cargo+') editado pela equipe Domus');
   fecharModal('modal-func-ccd'); render(); toast('Cadastro de '+f.nome+' salvo.');
   return false;
+}
+function excluirFuncCcd(){
+  var x=condo(document.getElementById('fc-condo').value); var o=oper(x);
+  var f=o.funcionarios.find(function(z){return z.id===parseInt(document.getElementById('fc-id').value);}); if(!f) return;
+  if(!confirm('Excluir '+f.nome+' ('+f.cargo+') do cadastro? Para rescisão formal, use "Desligar".')) return;
+  if(!confirm('Tem certeza? Confirme novamente para excluir '+f.nome+'.')) return;
+  o.funcionarios=o.funcionarios.filter(function(z){return z.id!==f.id;});
+  addFeed('DP', x.nome, 'Funcionário excluído', f.nome+' ('+f.cargo+') removido do cadastro pela equipe Domus');
+  fecharModal('modal-func-ccd'); render(); toast(f.nome+' excluído do cadastro.');
 }
 function desligarFunc(cid, fid){
   var x=condo(cid); var f=oper(x).funcionarios.find(function(z){return z.id===fid;}); if(!f) return;
@@ -148,8 +205,8 @@ function condoCotas(x){
   });
   var ord=lista.slice().sort(function(a,b){ var r={vencido:0,aberto:1,pago:2}; return (r[a.status]-r[b.status])||(a.unidade>b.unidade?1:-1); });
   var rows=ord.slice(0,250).map(function(b){
-    var ac = b.status==='pago' ? '<span class="muted">—</span>'
-      : '<button class="btn primary sm" onclick="baixarCota(\''+x.id+'\','+b.id+')">Registrar pagamento</button> <button class="btn sm" onclick="segundaVia(\''+x.id+'\','+b.id+')">2ª via</button>';
+    var ac = (b.status==='pago' ? '' : '<button class="btn primary sm" onclick="baixarCota(\''+x.id+'\','+b.id+')">Registrar pagamento</button> <button class="btn sm" onclick="segundaVia(\''+x.id+'\','+b.id+')">2ª via</button> ')
+      +'<button class="btn sm" onclick="abrirCotaCcd(\''+x.id+'\','+b.id+')">✎</button>';
     return '<tr><td style="white-space:nowrap"><strong>'+_esc(b.unidade)+'</strong></td><td>'+_esc(b.morador)+'</td><td style="white-space:nowrap">'+mlabelC(b.competencia)+'</td><td style="white-space:nowrap">'+dataBRC(b.vencimento)+'</td><td class="num">'+brl(b.valor)+'</td><td><span class="badge '+b.status+'">'+b.status+'</span></td><td class="num" style="white-space:nowrap">'+ac+'</td></tr>';
   }).join('');
   var sel=function(on,val,lbl){ return '<option value="'+val+'"'+(on===val?' selected':'')+'>'+lbl+'</option>'; };
@@ -159,7 +216,71 @@ function condoCotas(x){
     +'<input class="inp" id="ct-q" style="width:220px" placeholder="Unidade ou morador…" value="'+_esc(CT_Q)+'" oninput="cotasFiltro(\'q\',this.value)"></div>'
     +'<div class="tblx"><table class="tbl" style="min-width:880px"><thead><tr><th>Unidade</th><th>Morador</th><th>Compet.</th><th>Vencimento</th><th class="num">Valor</th><th>Status</th><th class="num">Ações</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +(ord.length>250?'<p class="muted" style="font-size:12px;margin-top:8px">Mostrando 250 de '+ord.length+' — use os filtros.</p>':'')+'</div>';
-  return kpis+'<div class="grid">'+tabela+'</div>';
+  return kpis+'<div class="grid">'+inadPorMorador(x)+tabela+'</div>';
+}
+/* controle de inadimplência por morador (agrupado, com encargos) */
+function devedores(x){
+  var o=oper(x); var map={};
+  o.boletos.filter(function(b){return b.status==='vencido';}).forEach(function(b){
+    var k=b.unidade; if(!map[k]) map[k]={unidade:b.unidade, morador:b.morador, n:0, val:0, comps:[]};
+    map[k].n++; map[k].val+=b.valor; map[k].comps.push(mlabelC(b.competencia));
+  });
+  return Object.keys(map).map(function(k){
+    var d=map[k];
+    d.multa=Math.round(d.val*(x.params.multa||2))/100;
+    d.juros=Math.round(d.val*(x.params.juros||1))/100;
+    d.total=Math.round((d.val+d.multa+d.juros)*100)/100;
+    var m=o.moradores.find(function(z){return z.unidade===d.unidade;});
+    d.tel=m?m.telefone:''; d.email=m?m.email:'';
+    return d;
+  }).sort(function(a,b){return b.total-a.total;});
+}
+function inadPorMorador(x){
+  var dev=devedores(x);
+  if(!dev.length) return '<div class="card span-12"><h3>Inadimplência por morador</h3><p class="muted" style="margin-top:8px">Nenhum morador inadimplente. 🎉</p></div>';
+  var tot=dev.reduce(function(s,d){return s+d.total;},0);
+  var rows=dev.map(function(d){
+    return '<tr><td><strong>'+_esc(d.morador)+'</strong><div class="muted" style="font-size:11px">'+_esc(d.tel)+'</div></td><td style="white-space:nowrap"><strong>'+_esc(d.unidade)+'</strong></td><td class="num">'+d.n+'</td><td style="white-space:nowrap">'+_esc(d.comps.join(', '))+'</td><td class="num">'+brl(d.val)+'</td><td class="num"><strong>'+brl(d.total)+'</strong><div class="muted" style="font-size:10.5px">+ multa '+brl(d.multa)+' · juros '+brl(d.juros)+'</div></td>'
+      +'<td class="num" style="white-space:nowrap"><button class="btn primary sm" onclick="cobrarMorador(\''+x.id+'\',\''+_esc(d.unidade)+'\')">Cobrar agora</button> <button class="btn sm" onclick="verCotasUnidade(\''+_esc(d.unidade)+'\')">Ver cotas</button></td></tr>';
+  }).join('');
+  return '<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Inadimplência por morador <span class="r">'+dev.length+' devedor(es) · '+brl(tot)+' atualizado</span></h3><span class="muted" style="font-size:12px">multa '+(x.params.multa||2)+'% + juros '+(x.params.juros||1)+'% a.m.</span></div>'
+    +'<div class="tblx" style="margin-top:8px"><table class="tbl" style="min-width:880px"><thead><tr><th>Morador</th><th>Unidade</th><th class="num">Cotas</th><th>Competências</th><th class="num">Original</th><th class="num">Atualizado</th><th class="num">Ações</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+function cobrarMorador(cid, unidade){
+  var x=condo(cid);
+  addFeed('Cobrança', x.nome, 'Cobrança acionada', 'Régua disparada manualmente para a unidade '+unidade+' — mensagem personalizada por e-mail e WhatsApp (modo teste)');
+  toast('Agente de Cobrança acionado para a unidade '+unidade+' (modo teste — nada enviado).');
+}
+function verCotasUnidade(unidade){ CT_Q=unidade.toLowerCase(); CT_ST='vencido'; CT_COMP=''; render(); window.scrollTo(0,300); }
+function abrirCotaCcd(cid, bid){
+  var b=oper(condo(cid)).boletos.find(function(z){return z.id===bid;}); if(!b) return;
+  document.getElementById('cq-condo').value=cid; document.getElementById('cq-id').value=bid;
+  document.getElementById('cq-unidade').value=b.unidade; document.getElementById('cq-morador').value=b.morador;
+  document.getElementById('cq-comp').value=b.competencia; document.getElementById('cq-venc').value=b.vencimento;
+  document.getElementById('cq-valor').value=b.valor; document.getElementById('cq-status').value=b.status;
+  abrirModal('modal-cota-ccd');
+}
+function salvarCotaCcd(ev){
+  ev.preventDefault();
+  var x=condo(document.getElementById('cq-condo').value); var b=oper(x).boletos.find(function(z){return z.id===parseInt(document.getElementById('cq-id').value);}); if(!b) return false;
+  b.competencia=document.getElementById('cq-comp').value.trim()||b.competencia;
+  b.vencimento=document.getElementById('cq-venc').value||b.vencimento;
+  b.valor=parseFloat(document.getElementById('cq-valor').value)||b.valor;
+  b.status=document.getElementById('cq-status').value;
+  syncKpi(x);
+  addFeed('Cobrança', x.nome, 'Cobrança editada', 'Cota '+b.unidade+' ('+mlabelC(b.competencia)+') corrigida pela equipe Domus — '+brl(b.valor)+' · '+b.status);
+  fecharModal('modal-cota-ccd'); render(); toast('Cobrança da unidade '+b.unidade+' atualizada.');
+  return false;
+}
+function excluirCotaCcd(){
+  var x=condo(document.getElementById('cq-condo').value); var o=oper(x);
+  var b=o.boletos.find(function(z){return z.id===parseInt(document.getElementById('cq-id').value);}); if(!b) return;
+  if(!confirm('Excluir a cobrança da unidade '+b.unidade+' ('+mlabelC(b.competencia)+')?')) return;
+  if(!confirm('Tem certeza? Confirme novamente para excluir.')) return;
+  o.boletos=o.boletos.filter(function(z){return z.id!==b.id;});
+  syncKpi(x);
+  addFeed('Cobrança', x.nome, 'Cobrança excluída', 'Cota '+b.unidade+' ('+mlabelC(b.competencia)+') removida pela equipe Domus');
+  fecharModal('modal-cota-ccd'); render(); toast('Cobrança excluída.');
 }
 function baixarCota(cid, bid){
   var x=condo(cid); var b=oper(x).boletos.find(function(z){return z.id===bid;}); if(!b||b.status==='pago') return;
@@ -185,9 +306,10 @@ function condoPagar(x){
     +kpi('Limite s/ aprovação', brl(x.governanca.limitePag), 'Acima disso, aprovação humana','')
     +'</div>';
   var ac=function(c){
-    if(c.status==='pendente') return '<button class="btn primary sm" onclick="aprovarCp(\''+x.id+'\','+c.id+')">Aprovar</button> <button class="btn sm" onclick="negarCp(\''+x.id+'\','+c.id+')">Negar</button>';
-    if(c.status==='aprovada') return '<button class="btn pinho sm" onclick="liquidarCp(\''+x.id+'\','+c.id+')">Liquidar</button>';
-    return '<span class="muted">—</span>';
+    var ed=' <button class="btn sm" onclick="abrirLancarCcd(\''+x.id+'\','+c.id+')">✎</button>';
+    if(c.status==='pendente') return '<button class="btn primary sm" onclick="aprovarCp(\''+x.id+'\','+c.id+')">Aprovar</button> <button class="btn sm" onclick="negarCp(\''+x.id+'\','+c.id+')">Negar</button>'+ed;
+    if(c.status==='aprovada') return '<button class="btn pinho sm" onclick="liquidarCp(\''+x.id+'\','+c.id+')">Liquidar</button>'+ed;
+    return ed;
   };
   var ord=o.contasPagar.slice().sort(function(a,b){ var r={pendente:0,aprovada:1,paga:2,negada:3}; return (r[a.status]-r[b.status])||(a.vencimento>b.vencimento?1:-1); });
   var rows=ord.map(function(c){
@@ -201,18 +323,61 @@ function condoPagar(x){
 function aprovarCp(cid, id){ var x=condo(cid); var c=oper(x).contasPagar.find(function(z){return z.id===id;}); if(!c||c.status!=='pendente') return; c.status='aprovada'; syncKpi(x); addFeed('Pagamentos', x.nome, 'Conta aprovada', c.numero+' '+c.descricao+' — '+brl(c.valor)+' aprovada pela Domus'); render(); toast(c.numero+' aprovada.'); }
 function negarCp(cid, id){ var x=condo(cid); var c=oper(x).contasPagar.find(function(z){return z.id===id;}); if(!c||c.status!=='pendente') return; if(!confirm('Negar o lançamento '+c.numero+' ('+c.descricao+')?')) return; c.status='negada'; syncKpi(x); addFeed('Pagamentos', x.nome, 'Conta negada', c.numero+' '+c.descricao+' recusada pela Domus'); render(); toast(c.numero+' negada.'); }
 function liquidarCp(cid, id){ var x=condo(cid); var c=oper(x).contasPagar.find(function(z){return z.id===id;}); if(!c||c.status!=='aprovada') return; c.status='paga'; x.kpi.saldo=(x.kpi.saldo||0)-c.valor; syncKpi(x); addFeed('Pagamentos', x.nome, 'Fornecedor pago', c.numero+' '+c.descricao+' — '+brl(c.valor)+' liquidada'); render(); toast(c.numero+' liquidada.'); }
-function abrirLancarCcd(cid){ document.getElementById('lc-condo').value=cid; document.getElementById('lc-desc').value=''; document.getElementById('lc-forn').value=''; document.getElementById('lc-valor').value=''; abrirModal('modal-lancar-ccd'); }
+function abrirLancarCcd(cid, id){
+  document.getElementById('lc-condo').value=cid;
+  document.getElementById('lc-id').value=id||'';
+  if(id){
+    var c=oper(condo(cid)).contasPagar.find(function(z){return z.id===id;}); if(!c) return;
+    document.getElementById('lc-h').textContent='Editar lançamento · '+c.numero;
+    document.getElementById('lc-del').style.display='';
+    document.getElementById('lc-nota').innerHTML='Edição é correção do lançamento — mudanças de status aqui não movimentam o caixa (use Aprovar/Liquidar).';
+    document.getElementById('lc-desc').value=c.descricao; document.getElementById('lc-forn').value=c.fornecedor;
+    document.getElementById('lc-grupo').value=c.grupo; document.getElementById('lc-valor').value=c.valor;
+    document.getElementById('lc-venc').value=c.vencimento; document.getElementById('lc-status').value=c.status;
+  } else {
+    document.getElementById('lc-h').textContent='Lançar conta a pagar';
+    document.getElementById('lc-del').style.display='none';
+    document.getElementById('lc-nota').innerHTML='O lançamento entra como <b>pendente</b> na fila de aprovação deste condomínio.';
+    document.getElementById('lc-desc').value=''; document.getElementById('lc-forn').value='';
+    document.getElementById('lc-valor').value=''; document.getElementById('lc-status').value='pendente';
+  }
+  abrirModal('modal-lancar-ccd');
+}
 function salvarLancarCcd(ev){
   ev.preventDefault();
   var x=condo(document.getElementById('lc-condo').value); if(!x) return false;
   var o=oper(x);
+  var idv=document.getElementById('lc-id').value;
+  var desc=document.getElementById('lc-desc').value.trim();
+  var valor=parseFloat(document.getElementById('lc-valor').value)||0;
+  if(!desc||!valor){ toast('Preencha descrição e valor.'); return false; }
+  if(idv){
+    var c=o.contasPagar.find(function(z){return z.id===parseInt(idv);}); if(!c) return false;
+    c.descricao=desc; c.fornecedor=document.getElementById('lc-forn').value.trim()||c.fornecedor;
+    c.grupo=document.getElementById('lc-grupo').value; c.valor=valor;
+    c.vencimento=document.getElementById('lc-venc').value||c.vencimento;
+    c.status=document.getElementById('lc-status').value;
+    syncKpi(x);
+    addFeed('Pagamentos', x.nome, 'Lançamento editado', c.numero+' '+c.descricao+' corrigido pela equipe Domus — '+brl(c.valor)+' · '+c.status);
+    fecharModal('modal-lancar-ccd'); render(); toast(c.numero+' atualizado.');
+    return false;
+  }
   var maxId=o.contasPagar.reduce(function(s,c){return Math.max(s,c.id);},0);
-  var c={id:maxId+1, numero:'LCT-'+('000'+(o.contasPagar.length+1)).slice(-4), descricao:document.getElementById('lc-desc').value.trim(), fornecedor:document.getElementById('lc-forn').value.trim()||'(a definir)', grupo:document.getElementById('lc-grupo').value, valor:parseFloat(document.getElementById('lc-valor').value)||0, vencimento:document.getElementById('lc-venc').value||'2026-06-20', competencia:'2026-06', status:'pendente'};
-  if(!c.descricao||!c.valor){ toast('Preencha descrição e valor.'); return false; }
-  o.contasPagar.push(c); syncKpi(x);
-  addFeed('Pagamentos', x.nome, 'Conta lançada', c.numero+' '+c.descricao+' — '+brl(c.valor)+' aguardando aprovação');
-  fecharModal('modal-lancar-ccd'); render(); toast('Conta '+c.numero+' lançada como pendente.');
+  var nv={id:maxId+1, numero:'LCT-'+('000'+(o.contasPagar.length+1)).slice(-4), descricao:desc, fornecedor:document.getElementById('lc-forn').value.trim()||'(a definir)', grupo:document.getElementById('lc-grupo').value, valor:valor, vencimento:document.getElementById('lc-venc').value||'2026-06-20', competencia:'2026-06', status:'pendente'};
+  o.contasPagar.push(nv); syncKpi(x);
+  addFeed('Pagamentos', x.nome, 'Conta lançada', nv.numero+' '+nv.descricao+' — '+brl(nv.valor)+' aguardando aprovação');
+  fecharModal('modal-lancar-ccd'); render(); toast('Conta '+nv.numero+' lançada como pendente.');
   return false;
+}
+function excluirLancCcd(){
+  var x=condo(document.getElementById('lc-condo').value); var o=oper(x);
+  var c=o.contasPagar.find(function(z){return z.id===parseInt(document.getElementById('lc-id').value);}); if(!c) return;
+  if(!confirm('Excluir o lançamento '+c.numero+' ('+c.descricao+')?')) return;
+  if(!confirm('Tem certeza? Confirme novamente para excluir '+c.numero+'.')) return;
+  o.contasPagar=o.contasPagar.filter(function(z){return z.id!==c.id;});
+  syncKpi(x);
+  addFeed('Pagamentos', x.nome, 'Lançamento excluído', c.numero+' '+c.descricao+' removido pela equipe Domus');
+  fecharModal('modal-lancar-ccd'); render(); toast(c.numero+' excluído.');
 }
 
 /* ---------- aba CONTÁBIL ---------- */
@@ -237,7 +402,82 @@ function condoContabil(x){
     +kv('(+) Receita de cotas', brl(recMai))+kv('(−) Despesas operacionais', brl(despMai))+kv('(=) Resultado', brl(res))
     +'<p class="muted" style="font-size:12px;margin-top:12px">Demonstrações completas (DRE, Balanço, Fluxo, Balancete) no SGC do condomínio'+(x.sgcUrl?' — <a href="#" onclick="abrirSGC(\''+x.id+'\');return false" style="color:var(--pinho);font-weight:600">abrir SGC ↗</a>':'')+'.</p></div>';
   var despCard='<div class="card span-6"><h3>Despesas por grupo · acumulado</h3>'+(bars||'<p class="muted">Sem despesas liquidadas ainda.</p>')+'</div>';
-  return kpis+'<div class="grid">'+dre+despCard+'</div>';
+  return kpis+'<div class="grid">'+dre+despCard+balanceteCard(x)+'</div>';
+}
+
+/* ---------- balancete + razão (partidas dobradas) ---------- */
+function balanceteData(x){
+  var o=oper(x);
+  var emitidas=o.boletos.reduce(function(s,b){return s+b.valor;},0);
+  var recebidas=o.boletos.filter(function(b){return b.status==='pago';}).reduce(function(s,b){return s+b.valor;},0);
+  var lanc=o.contasPagar.filter(function(c){return c.status!=='negada';});
+  var lancTot=lanc.reduce(function(s,c){return s+c.valor;},0);
+  var pagasTot=o.contasPagar.filter(function(c){return c.status==='paga';}).reduce(function(s,c){return s+c.valor;},0);
+  var saldo=x.kpi.saldo||0;
+  var abertura=Math.round((saldo-recebidas+pagasTot)*100)/100;
+  var grupos={};
+  lanc.forEach(function(c){ grupos[c.grupo]=(grupos[c.grupo]||0)+c.valor; });
+  var linhas=[
+    {key:'caixa', nome:'Caixa e equivalentes', cls:'Ativo', deb:abertura+recebidas, cred:pagasTot},
+    {key:'receber', nome:'Cotas a receber', cls:'Ativo', deb:emitidas, cred:recebidas},
+    {key:'forn', nome:'Fornecedores a pagar', cls:'Passivo', deb:pagasTot, cred:lancTot},
+    {key:'abertura', nome:'Saldo de abertura', cls:'Patrimônio', deb:0, cred:abertura},
+    {key:'receita', nome:'Receita de cotas condominiais', cls:'Receita', deb:0, cred:emitidas}
+  ];
+  Object.keys(grupos).sort().forEach(function(g){ linhas.push({key:'desp:'+g, nome:'Despesas — '+g, cls:'Despesa', deb:grupos[g], cred:0}); });
+  linhas.forEach(function(l){ l.saldo=Math.round((l.deb-l.cred)*100)/100; });
+  return {linhas:linhas, abertura:abertura, totDeb:linhas.reduce(function(s,l){return s+l.deb;},0), totCred:linhas.reduce(function(s,l){return s+l.cred;},0)};
+}
+function balanceteCard(x){
+  var b=balanceteData(x);
+  var rows=b.linhas.map(function(l){
+    var sl = l.saldo>=0 ? brl(l.saldo)+' D' : brl(-l.saldo)+' C';
+    return '<tr><td><strong>'+_esc(l.nome)+'</strong></td><td><span class="chip">'+l.cls+'</span></td><td class="num">'+(l.deb?brl(l.deb):'—')+'</td><td class="num">'+(l.cred?brl(l.cred):'—')+'</td><td class="num"><strong>'+sl+'</strong></td><td class="num"><button class="btn sm" onclick="verRazaoCcd(\''+x.id+'\',\''+l.key+'\')">Razão</button></td></tr>';
+  }).join('');
+  var ok=Math.abs(b.totDeb-b.totCred)<0.01;
+  return '<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Balancete de verificação · acumulado 2026</h3><span class="muted" style="font-size:12px">'+(ok?'✓ Débitos = Créditos':'⚠ diferença '+brl(b.totDeb-b.totCred))+'</span></div>'
+    +'<div class="tblx" style="margin-top:8px"><table class="tbl" style="min-width:820px"><thead><tr><th>Conta</th><th>Classe</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Saldo</th><th class="num">Razão</th></tr></thead><tbody>'+rows
+    +'<tr style="border-top:2px solid var(--linha)"><td><strong>Totais</strong></td><td></td><td class="num"><strong>'+brl(b.totDeb)+'</strong></td><td class="num"><strong>'+brl(b.totCred)+'</strong></td><td class="num">'+(ok?'<span class="badge pago">fechado</span>':'')+'</td><td></td></tr>'
+    +'</tbody></table></div><p class="muted" style="font-size:12px;margin-top:10px">Regime de partidas dobradas: emissão de cota (D Cotas a receber / C Receita), recebimento (D Caixa / C Cotas a receber), lançamento de despesa (D Despesa / C Fornecedores) e pagamento (D Fornecedores / C Caixa). Clique em <b>Razão</b> para os movimentos da conta.</p></div>';
+}
+function razaoMovs(x, key){
+  var o=oper(x); var b=balanceteData(x);
+  var comps=[]; o.boletos.forEach(function(z){ if(comps.indexOf(z.competencia)<0) comps.push(z.competencia); }); comps.sort();
+  var movs=[];
+  function emisComp(c){ var bs=o.boletos.filter(function(z){return z.competencia===c;}); return {n:bs.length, val:bs.reduce(function(s,z){return s+z.valor;},0)}; }
+  function recComp(c){ var bs=o.boletos.filter(function(z){return z.competencia===c && z.status==='pago';}); return {n:bs.length, val:bs.reduce(function(s,z){return s+z.valor;},0)}; }
+  if(key==='caixa'){
+    movs.push({data:'2026-01-01', hist:'Saldo de abertura', deb:b.abertura, cred:0});
+    comps.forEach(function(c){ var r=recComp(c); if(r.val) movs.push({data:c+'-15', hist:'Recebimento de cotas '+mlabelC(c)+' ('+r.n+' un.)', deb:r.val, cred:0}); });
+    o.contasPagar.filter(function(z){return z.status==='paga';}).forEach(function(z){ movs.push({data:z.vencimento, hist:'Pagamento '+z.numero+' — '+z.descricao, deb:0, cred:z.valor}); });
+  } else if(key==='receber'){
+    comps.forEach(function(c){ var e=emisComp(c); if(e.val) movs.push({data:c+'-01', hist:'Emissão de cotas '+mlabelC(c)+' ('+e.n+' un.)', deb:e.val, cred:0}); var r=recComp(c); if(r.val) movs.push({data:c+'-15', hist:'Baixa por recebimento '+mlabelC(c)+' ('+r.n+' un.)', deb:0, cred:r.val}); });
+  } else if(key==='forn'){
+    o.contasPagar.filter(function(z){return z.status!=='negada';}).forEach(function(z){ movs.push({data:z.vencimento, hist:'Lançamento '+z.numero+' — '+z.descricao, deb:0, cred:z.valor}); if(z.status==='paga') movs.push({data:z.vencimento, hist:'Pagamento '+z.numero, deb:z.valor, cred:0}); });
+  } else if(key==='receita'){
+    comps.forEach(function(c){ var e=emisComp(c); if(e.val) movs.push({data:c+'-01', hist:'Receita de cotas '+mlabelC(c)+' ('+e.n+' un.)', deb:0, cred:e.val}); });
+  } else if(key==='abertura'){
+    movs.push({data:'2026-01-01', hist:'Constituição do saldo de abertura', deb:0, cred:b.abertura});
+  } else if(key.indexOf('desp:')===0){
+    var g=key.slice(5);
+    o.contasPagar.filter(function(z){return z.status!=='negada' && z.grupo===g;}).forEach(function(z){ movs.push({data:z.vencimento, hist:z.numero+' — '+z.descricao+' ('+z.fornecedor+')', deb:z.valor, cred:0}); });
+  }
+  movs.sort(function(a,bb){ return a.data<bb.data?-1:1; });
+  var run=0; movs.forEach(function(m){ run=Math.round((run+m.deb-m.cred)*100)/100; m.saldo=run; });
+  return movs;
+}
+function verRazaoCcd(cid, key){
+  var x=condo(cid); var b=balanceteData(x);
+  var linha=b.linhas.find(function(l){return l.key===key;}); if(!linha) return;
+  var movs=razaoMovs(x, key);
+  var rows=movs.slice(0,80).map(function(m){
+    var sl = m.saldo>=0 ? brl(m.saldo)+' D' : brl(-m.saldo)+' C';
+    return '<tr><td style="white-space:nowrap">'+dataBRC(m.data)+'</td><td>'+_esc(m.hist)+'</td><td class="num">'+(m.deb?brl(m.deb):'—')+'</td><td class="num">'+(m.cred?brl(m.cred):'—')+'</td><td class="num" style="white-space:nowrap">'+sl+'</td></tr>';
+  }).join('');
+  document.querySelector('#modal-prev-ccd .pv-title').textContent='Razão · '+linha.nome;
+  document.querySelector('#modal-prev-ccd .pv-sub').innerHTML=_esc(x.nome)+' · '+movs.length+' movimento(s)'+(movs.length>80?' (mostrando 80)':'')+' · acumulado 2026';
+  document.querySelector('#modal-prev-ccd .pv-body').innerHTML='<div class="tblx"><table class="tbl" style="min-width:520px"><thead><tr><th>Data</th><th>Histórico</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  abrirModal('modal-prev-ccd');
 }
 
 /* ---------- aba COMUNICAÇÃO (avisos + atas) ---------- */
@@ -364,7 +604,14 @@ function renderOperacao(){
     return '<tr><td><strong>'+_esc(r.x.nome)+'</strong></td><td class="num">'+r.n+'</td><td class="num">'+brl(r.val)+'</td><td class="num">'+pctf(r.x.kpi.inad||0)+'</td><td class="num"><button class="btn sm" onclick="abrirCondo(\''+r.x.id+'\',\'cotas\')">Abrir cotas</button></td></tr>';
   }).join('');
   var inadCard='<div class="card span-5"><h3>Inadimplência por condomínio</h3><div class="tblx" style="margin-top:6px"><table class="tbl" style="min-width:460px"><thead><tr><th>Condomínio</th><th class="num">Vencidas</th><th class="num">Valor</th><th class="num">%</th><th></th></tr></thead><tbody>'+inadRows+'</tbody></table></div></div>';
+  var devAll=[];
+  CCD.forEach(function(x){ devedores(x).forEach(function(d){ d.condoNome=x.nome; d.condoId=x.id; devAll.push(d); }); });
+  var topRows=devAll.sort(function(a,b){return b.total-a.total;}).slice(0,10).map(function(d){
+    return '<tr><td><strong>'+_esc(d.morador)+'</strong><div class="muted" style="font-size:11px">'+_esc(d.condoNome)+'</div></td><td style="white-space:nowrap"><strong>'+_esc(d.unidade)+'</strong></td><td class="num">'+d.n+'</td><td class="num"><strong>'+brl(d.total)+'</strong></td><td class="num" style="white-space:nowrap"><button class="btn primary sm" onclick="cobrarMorador(\''+d.condoId+'\',\''+_esc(d.unidade)+'\')">Cobrar</button> <button class="btn sm" onclick="abrirCondo(\''+d.condoId+'\',\'cotas\')">Abrir</button></td></tr>';
+  }).join('');
+  var topCard='<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Top devedores da base <span class="r">'+devAll.length+' morador(es) inadimplente(s)</span></h3><span class="muted" style="font-size:12px">valor atualizado com multa e juros</span></div>'
+    +(devAll.length?'<div class="tblx" style="margin-top:8px"><table class="tbl" style="min-width:680px"><thead><tr><th>Morador · condomínio</th><th>Unidade</th><th class="num">Cotas</th><th class="num">Devido</th><th class="num">Ações</th></tr></thead><tbody>'+topRows+'</tbody></table></div>':'<p class="muted" style="margin-top:8px">Base 100% adimplente. 🎉</p>')+'</div>';
   var com='<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Comunicação em lote</h3><button class="btn primary sm" onclick="abrirAvisoCcd(null)">+ Aviso para vários condomínios</button></div><p class="muted" style="font-size:12.5px;margin-top:8px">Publique um comunicado de uma vez para os SGCs e Apps dos condomínios selecionados — ex.: recesso de fim de ano, campanhas, mudanças de processo.</p></div>';
   var note='<div class="ai-note"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E5A4F" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a8 8 0 0 0 .1-6M4.5 9a8 8 0 0 0 .1 6"/></svg><div>Visão <strong>gerencial consolidada</strong>: a Domus enxerga e opera o SGC de todos os condomínios daqui — cotas, aprovações, folha e comunicação. Para o detalhe de um condomínio, abra a ficha dele.</div></div>';
-  return note+kpis+'<div class="grid">'+filaCard+inadCard+com+'</div>';
+  return note+kpis+'<div class="grid">'+filaCard+inadCard+topCard+com+'</div>';
 }

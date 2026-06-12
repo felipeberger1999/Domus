@@ -522,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function(){
   ccdSave();
   // navegação da sidebar (delegação de clique)
   document.getElementById('nav').addEventListener('click', function(e){ var a=e.target.closest('a'); if(a && a.dataset.sec) nav(a.dataset.sec); });
-  ['modal-regua-ccd','modal-msg-ccd','modal-prev-ccd','modal-novo-condo','modal-edit-condo','modal-morador-ccd','modal-func-ccd','modal-lancar-ccd','modal-aviso-ccd','modal-ata-ccd'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('click', function(ev){ if(ev.target.id===id) el.classList.remove('open'); }); });
+  ['modal-regua-ccd','modal-msg-ccd','modal-prev-ccd','modal-novo-condo','modal-edit-condo','modal-morador-ccd','modal-func-ccd','modal-lancar-ccd','modal-aviso-ccd','modal-ata-ccd','modal-cota-ccd'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('click', function(ev){ if(ev.target.id===id) el.classList.remove('open'); }); });
   ['msgccd-email','msgccd-wppmsg','msgccd-assunto'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('focus', function(){ _msgLastFocus=id; }); });
   setActive('visao'); render();
 });

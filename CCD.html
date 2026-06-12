@@ -115,7 +115,7 @@
 </div></div>
 
 <div class="modal-bg" id="modal-morador-ccd"><div class="modal" style="max-width:520px">
-  <div class="head"><h2>Editar morador</h2><button class="x" onclick="fecharModal('modal-morador-ccd')">&times;</button></div>
+  <div class="head"><h2 id="mr-h">Editar morador</h2><button class="x" onclick="fecharModal('modal-morador-ccd')">&times;</button></div>
   <form onsubmit="return salvarMoradorCcd(event)"><div class="body"><input type="hidden" id="mr-condo"><input type="hidden" id="mr-id">
     <div class="form-grid">
       <div class="field full"><label>Nome</label><input class="inp" id="mr-nome" required></div>
@@ -124,32 +124,48 @@
       <div class="field"><label>Telefone</label><input class="inp" id="mr-tel"></div>
       <div class="field"><label>E-mail</label><input class="inp" id="mr-email"></div>
     </div>
-  </div><div class="foot"><button type="button" class="btn" onclick="fecharModal('modal-morador-ccd')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+  </div><div class="foot"><button type="button" class="btn danger-link" id="mr-del" onclick="excluirMoradorCcd()">Excluir morador</button><span style="flex:1"></span><button type="button" class="btn" onclick="fecharModal('modal-morador-ccd')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
 </div></div>
 
 <div class="modal-bg" id="modal-func-ccd"><div class="modal" style="max-width:520px">
-  <div class="head"><h2>Editar funcionário</h2><button class="x" onclick="fecharModal('modal-func-ccd')">&times;</button></div>
+  <div class="head"><h2 id="fc-h">Editar funcionário</h2><button class="x" onclick="fecharModal('modal-func-ccd')">&times;</button></div>
   <form onsubmit="return salvarFuncCcd(event)"><div class="body"><input type="hidden" id="fc-condo"><input type="hidden" id="fc-id">
     <div class="form-grid">
       <div class="field full"><label>Nome</label><input class="inp" id="fc-nome" required></div>
       <div class="field"><label>Cargo</label><input class="inp" id="fc-cargo"></div>
       <div class="field"><label>Salário (R$)</label><input class="inp" id="fc-salario" type="number"></div>
     </div>
-  </div><div class="foot"><button type="button" class="btn" onclick="fecharModal('modal-func-ccd')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+  </div><div class="foot"><button type="button" class="btn danger-link" id="fc-del" onclick="excluirFuncCcd()">Excluir funcionário</button><span style="flex:1"></span><button type="button" class="btn" onclick="fecharModal('modal-func-ccd')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
 </div></div>
 
 <div class="modal-bg" id="modal-lancar-ccd"><div class="modal" style="max-width:560px">
-  <div class="head"><h2>Lançar conta a pagar</h2><button class="x" onclick="fecharModal('modal-lancar-ccd')">&times;</button></div>
-  <form onsubmit="return salvarLancarCcd(event)"><div class="body"><input type="hidden" id="lc-condo">
+  <div class="head"><h2 id="lc-h">Lançar conta a pagar</h2><button class="x" onclick="fecharModal('modal-lancar-ccd')">&times;</button></div>
+  <form onsubmit="return salvarLancarCcd(event)"><div class="body"><input type="hidden" id="lc-condo"><input type="hidden" id="lc-id">
     <div class="form-grid">
       <div class="field full"><label>Descrição</label><input class="inp" id="lc-desc" placeholder="Ex.: Reparo do portão da garagem" required></div>
       <div class="field"><label>Fornecedor</label><input class="inp" id="lc-forn" placeholder="Nome do fornecedor"></div>
       <div class="field"><label>Grupo</label><select class="inp" id="lc-grupo"><option>Manutenção</option><option>Utilities</option><option>Pessoal</option><option>Administradora</option><option>Impostos</option><option>Outros</option></select></div>
       <div class="field"><label>Valor (R$)</label><input class="inp" id="lc-valor" type="number" step="0.01" required></div>
       <div class="field"><label>Vencimento</label><input class="inp" id="lc-venc" type="date" value="2026-06-20"></div>
+      <div class="field"><label>Status</label><select class="inp" id="lc-status"><option value="pendente">Pendente</option><option value="aprovada">Aprovada</option><option value="paga">Paga</option><option value="negada">Negada</option></select></div>
     </div>
-    <p class="muted" style="font-size:12px;margin:14px 0 0">O lançamento entra como <b>pendente</b> na fila de aprovação deste condomínio.</p>
-  </div><div class="foot"><button type="button" class="btn" onclick="fecharModal('modal-lancar-ccd')">Cancelar</button><button type="submit" class="btn primary">Lançar conta</button></div></form>
+    <p class="muted" id="lc-nota" style="font-size:12px;margin:14px 0 0">O lançamento entra como <b>pendente</b> na fila de aprovação deste condomínio.</p>
+  </div><div class="foot"><button type="button" class="btn danger-link" id="lc-del" onclick="excluirLancCcd()">Excluir lançamento</button><span style="flex:1"></span><button type="button" class="btn" onclick="fecharModal('modal-lancar-ccd')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-cota-ccd"><div class="modal" style="max-width:540px">
+  <div class="head"><h2>Editar cobrança (cota)</h2><button class="x" onclick="fecharModal('modal-cota-ccd')">&times;</button></div>
+  <form onsubmit="return salvarCotaCcd(event)"><div class="body"><input type="hidden" id="cq-condo"><input type="hidden" id="cq-id">
+    <div class="form-grid">
+      <div class="field"><label>Unidade</label><input class="inp" id="cq-unidade" readonly style="opacity:.7"></div>
+      <div class="field"><label>Morador</label><input class="inp" id="cq-morador" readonly style="opacity:.7"></div>
+      <div class="field"><label>Competência</label><input class="inp" id="cq-comp" placeholder="2026-06"></div>
+      <div class="field"><label>Vencimento</label><input class="inp" id="cq-venc" type="date"></div>
+      <div class="field"><label>Valor (R$)</label><input class="inp" id="cq-valor" type="number" step="0.01"></div>
+      <div class="field"><label>Status</label><select class="inp" id="cq-status"><option value="aberto">Aberto</option><option value="vencido">Vencido</option><option value="pago">Pago</option></select></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:14px 0 0">Edição é correção de cadastro — o caixa só se movimenta pelo <b>Registrar pagamento</b>.</p>
+  </div><div class="foot"><button type="button" class="btn danger-link" onclick="excluirCotaCcd()">Excluir cobrança</button><span style="flex:1"></span><button type="button" class="btn" onclick="fecharModal('modal-cota-ccd')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
 </div></div>
 
 <div class="modal-bg" id="modal-aviso-ccd"><div class="modal" style="max-width:600px">
