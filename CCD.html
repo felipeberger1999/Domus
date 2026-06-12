@@ -72,6 +72,47 @@
   <div class="foot"><span class="cob-foot-test">🧪 Modo de teste — exemplo, nada é enviado</span><button type="button" class="btn primary" onclick="fecharModal('modal-prev-ccd')">Fechar</button></div>
 </div></div>
 
+<div class="modal-bg" id="modal-novo-condo"><div class="modal" style="max-width:620px">
+  <div class="head"><h2>Novo condomínio</h2><button class="x" onclick="fecharModal('modal-novo-condo')">&times;</button></div>
+  <form onsubmit="return salvarNovoCondo(event)"><div class="body">
+    <div class="form-grid">
+      <div class="field full"><label>Nome do condomínio</label><input class="inp" id="nc-nome" placeholder="Ex.: Residencial Primavera" required></div>
+      <div class="field"><label>Cidade</label><input class="inp" id="nc-cidade" placeholder="São Paulo"></div>
+      <div class="field"><label>UF</label><input class="inp" id="nc-uf" value="SP" maxlength="2"></div>
+      <div class="field"><label>Nº de unidades</label><input class="inp" id="nc-unidades" type="number" value="50"></div>
+      <div class="field"><label>Plano</label><select class="inp" id="nc-plano"><option>Essencial</option><option selected>Pro</option><option>Full</option></select></div>
+      <div class="field full"><label>Síndico(a)</label><input class="inp" id="nc-sindico" placeholder="Nome do síndico"></div>
+      <div class="field"><label>Taxa condominial (R$)</label><input class="inp" id="nc-taxa" type="number" value="600"></div>
+      <div class="field"><label>Dia de vencimento</label><input class="inp" id="nc-venc" type="number" value="10"></div>
+      <div class="field full"><label>Conta bancária</label><input class="inp" id="nc-conta" placeholder="Banco · Agência · Conta (pode definir depois)"></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:14px 0 0">Ao criar, o condomínio entra em <b>onboarding</b> com um checklist guiado. Os agentes começam desligados e são ativados na etapa final.</p>
+  </div><div class="foot"><button type="button" class="btn" onclick="fecharModal('modal-novo-condo')">Cancelar</button><button type="submit" class="btn primary">Criar e iniciar onboarding</button></div></form>
+</div></div>
+
+<div class="modal-bg" id="modal-edit-condo"><div class="modal" style="max-width:640px">
+  <div class="head"><h2>Editar condomínio</h2><button class="x" onclick="fecharModal('modal-edit-condo')">&times;</button></div>
+  <form onsubmit="return salvarEditCondo(event)"><div class="body"><input type="hidden" id="ec-id">
+    <div class="form-grid">
+      <div class="field full"><label>Nome</label><input class="inp" id="ec-nome" required></div>
+      <div class="field"><label>Cidade</label><input class="inp" id="ec-cidade"></div>
+      <div class="field"><label>UF</label><input class="inp" id="ec-uf" maxlength="2"></div>
+      <div class="field"><label>Nº de unidades</label><input class="inp" id="ec-unidades" type="number"></div>
+      <div class="field"><label>Plano</label><select class="inp" id="ec-plano"><option>Essencial</option><option>Pro</option><option>Full</option></select></div>
+      <div class="field"><label>Status</label><select class="inp" id="ec-status"><option value="ativo">Ativo</option><option value="onboarding">Onboarding</option><option value="pausado">Pausado</option></select></div>
+      <div class="field"><label>Cliente desde</label><input class="inp" id="ec-desde"></div>
+      <div class="field full"><label>Síndico(a)</label><input class="inp" id="ec-sindico"></div>
+    </div>
+    <h3 style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--musgo);margin:18px 0 10px">Governança</h3>
+    <div class="form-grid">
+      <div class="field"><label>Limite s/ aprovação (R$)</label><input class="inp" id="ec-limite" type="number"></div>
+      <div class="field"><label>Aprovador</label><input class="inp" id="ec-aprovador"></div>
+      <div class="field"><label>Teto de reajuste (%)</label><input class="inp" id="ec-teto" type="number"></div>
+    </div>
+    <p class="muted" style="font-size:11.5px;margin:16px 0 0">Módulos do SGC, funcionalidades do App, parâmetros financeiros e agentes são editados nas abas da ficha.</p>
+  </div><div class="foot"><button type="button" class="btn danger-link" onclick="excluirCondo()">Excluir condomínio</button><span style="flex:1"></span><button type="button" class="btn" onclick="fecharModal('modal-edit-condo')">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>
+</div></div>
+
 <script src="ccd/ccd.js"></script>
 </body>
 </html>

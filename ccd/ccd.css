@@ -90,6 +90,26 @@
 .ob-track{height:9px;background:var(--areia);border:1px solid var(--linha);border-radius:999px;overflow:hidden}
 .ob-fill{height:100%;background:var(--ambar);border-radius:999px}
 
+/* card "adicionar condomínio" */
+.ccd-add{border-style:dashed;background:transparent;display:grid;place-items:center;min-height:172px}
+.ccd-add:hover{background:var(--creme)}
+.ccd-add .add-in{display:flex;gap:14px;align-items:center;color:var(--musgo)}
+.ccd-add .plus{width:44px;height:44px;border-radius:12px;border:1.5px dashed var(--musgo-claro);display:grid;place-items:center;font-size:24px;color:var(--pinho)}
+.ccd-add .t{font-weight:600;color:var(--tinta);font-size:14.5px}
+.ccd-add .d{font-size:12px;margin-top:2px}
+
+/* checklist de onboarding */
+.ob-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 18px;margin-top:14px}
+.ob-step{display:flex;gap:10px;align-items:center;font-size:13.5px;padding:10px 12px;border:1px solid var(--linha);border-radius:10px;background:var(--areia);cursor:pointer;color:var(--musgo);transition:border-color .15s}
+.ob-step:hover{border-color:var(--musgo-claro)}
+.ob-step .ck{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--musgo-claro);display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;background:transparent}
+.ob-step.done{color:var(--tinta);background:var(--creme)}
+.ob-step.done .ck{background:var(--pinho);border-color:var(--pinho)}
+
+/* link perigoso (excluir) */
+.btn.danger-link{border-color:transparent;background:transparent;color:#9a3d2a;padding-left:0}
+.btn.danger-link:hover{text-decoration:underline;background:transparent}
+
 /* key-value (resumo) */
 .kv{display:flex;justify-content:space-between;gap:14px;font-size:13px;padding:8px 0;border-bottom:1px solid var(--linha)}
 .kv:last-child{border-bottom:none}

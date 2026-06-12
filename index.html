@@ -1205,5 +1205,28 @@ GSCREENS.gsgc=function(){ const T={visao:'Visão Geral',cadastro:'Cadastro',asse
   }catch(e){}
 })();
 </script>
+
+<script>
+/* ===== Integração CCD → App (funcionalidades por condomínio) =====
+   A CCD define o que os moradores deste condomínio veem no app. Sem
+   configuração (ex.: rodando embarcado sem CCD), tudo fica ligado. */
+(function(){
+  var app=null;
+  try{ var s=JSON.parse(localStorage.getItem('domus_ccd_v1')||'null'); if(s && s.v===1 && s.condos){ var f=s.condos.find(function(x){return x.id==='felipe2';}); app=f? f.app : null; } }catch(e){}
+  if(!app) return;
+  function ligada(k){ return app[k]!==false; }
+  var FEAT={cobrancas:1,pagamento:1,comunicados:1,reservas:1,assembleias:1,visitantes:1,servicos:1,entregas:1,saude:1};
+  // bloqueia navegação para telas desligadas
+  var _go=window.go;
+  window.go=function(screen,push){ if(FEAT[screen] && !ligada(screen)){ toast('Função não habilitada para o seu condomínio.'); return; } return _go(screen,push); };
+  // some com as abas inferiores desligadas
+  var _renderTabs=window.renderTabs;
+  window.renderTabs=function(){ _renderTabs(); try{ document.querySelectorAll('#tabbar .tab').forEach(function(b){ var m=(b.getAttribute('onclick')||'').match(/setTab\('(\w+)'\)/); var k=m&&m[1]; if(k && FEAT[k] && !ligada(k)) b.style.display='none'; }); }catch(e){} };
+  // esconde cards/atalhos que levam a telas desligadas
+  var _render=window.render;
+  window.render=function(screen){ _render(screen); try{ document.querySelectorAll('[onclick]').forEach(function(el){ var m=(el.getAttribute('onclick')||'').match(/go\('(\w+)'/); var k=m&&m[1]; if(k && FEAT[k] && !ligada(k)) el.style.display='none'; }); }catch(e){} };
+})();
+</script>
+
 </body>
 </html>

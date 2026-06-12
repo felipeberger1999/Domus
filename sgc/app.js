@@ -1210,3 +1210,30 @@ function sgcResumoMorador(id){
   _modalResumo(m.nome, body);
 }
 document.addEventListener('click', function(e){ var s=document.getElementById('tb-search'); if(s && !s.contains(e.target)) sgcSearchClose(); });
+
+/* ===== Integração CCD → SGC =====
+   A Central de Controle Domus governa módulos e parâmetros deste condomínio
+   (felipe2). Sem configuração da CCD (ex.: dentro do app), tudo fica ligado. */
+(function(){
+  var cfg=null;
+  try{ var s=JSON.parse(localStorage.getItem('domus_ccd_v1')||'null'); if(s && s.v===1 && s.condos) cfg=s.condos.find(function(x){return x.id==='felipe2';})||null; }catch(e){}
+  if(!cfg) return;
+  window.CCD_CONDO=cfg;
+  // módulos desligados somem do menu
+  document.querySelectorAll('#nav a').forEach(function(a){ var sec=a.dataset.sec; if(cfg.sgc && cfg.sgc[sec]===false) a.style.display='none'; });
+  // navegação para módulo desligado cai na Visão Geral
+  var _nav=window.nav;
+  window.nav=function(sec){ if(cfg.sgc && cfg.sgc[sec]===false) sec='visao'; return _nav(sec); };
+  // nota de parâmetros geridos pela CCD em Contas a Receber
+  var _render=window.render;
+  window.render=function(){ _render(); try{
+    if(SEC==='receber' && cfg.params){
+      var c=document.getElementById('content'); if(!c) return;
+      var d=document.createElement('div'); d.className='ai-note';
+      d.innerHTML='<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E5A4F" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><div>Parâmetros geridos pela <strong>Central de Controle Domus</strong>: cota <strong>'+brl(cfg.params.taxa)+'</strong> · vencimento dia <strong>'+cfg.params.diaVenc+'</strong> · multa <strong>'+cfg.params.multa+'%</strong> + juros <strong>'+cfg.params.juros+'% a.m.</strong> · '+_escCcd(cfg.params.conta)+'</div>';
+      c.insertBefore(d, c.firstChild);
+    }
+  }catch(e){} };
+  function _escCcd(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  if(cfg.sgc && cfg.sgc[SEC]===false){ try{ window.nav('visao'); }catch(e){} }
+})();

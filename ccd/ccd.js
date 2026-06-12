@@ -26,15 +26,23 @@ var SGC_FEATURES = [
   ['portaria','Portaria & Reservas','Acesso, encomendas e reservas']
 ];
 var APP_FEATURES = [
-  ['inicio','Início','Resumo do condomínio para o morador'],
-  ['financeiro','Financeiro / 2ª via','Boletos, PIX e demonstrativos'],
+  ['cobrancas','Cobranças & 2ª via','Boletos, histórico e linha digitável'],
+  ['pagamento','Pagamento (PIX)','Pagar a cota direto no app'],
+  ['comunicados','Comunicados','Avisos do condomínio para moradores'],
   ['reservas','Reserva de áreas','Salão, churrasqueira, quadra…'],
-  ['visitantes','Visitantes & encomendas','Pré-autorização e avisos'],
-  ['anuncios','Mural de anúncios','Classificados entre moradores'],
-  ['avisos','Avisos & comunicados','Recebimento de comunicados'],
-  ['assembleia','Assembleia & votação','Pauta, presença e voto digital'],
-  ['ocorrencias','Ocorrências','Abertura de chamados'],
-  ['documentos','Documentos','Convenção, atas, regimentos']
+  ['visitantes','Visitantes','Pré-autorização de entrada'],
+  ['entregas','Entregas & encomendas','Aviso de chegada e retirada'],
+  ['servicos','Serviços & manutenção','Solicitações da unidade'],
+  ['assembleias','Assembleias','Pauta, convocação e atas'],
+  ['saude','Saúde & bem-estar','Conteúdo de qualidade de vida']
+];
+var OB_STEPS = [
+  ['dados','Dados básicos e contrato assinado'],
+  ['unidades','Unidades e moradores importados'],
+  ['conta','Conta bancária cadastrada'],
+  ['sgc','SGC provisionado e parametrizado'],
+  ['app','App liberado aos moradores'],
+  ['agentes','Agentes configurados e ativados']
 ];
 var AGENTES = [
   ['cobranca','Cobrança','Executa a régua de cobrança e personaliza as mensagens por morador.'],
@@ -86,10 +94,16 @@ function mkCondo(o){
   var sgc={}; SGC_FEATURES.forEach(function(f){ sgc[f[0]]=true; });
   var app={}; APP_FEATURES.forEach(function(f){ app[f[0]]=true; });
   var agentes={}; AGENTES.forEach(function(a){ agentes[a[0]]={ativo:true, autonomia:'aprovacao', canais:['whatsapp','email']}; });
-  var base={sgc:sgc, app:app, agentes:agentes,
+  var ob={}; OB_STEPS.forEach(function(s){ ob[s[0]]=true; });
+  var base={sgc:sgc, app:app, agentes:agentes, obSteps:ob,
     params:{taxa:580, diaVenc:10, multa:2, juros:1, conta:'Banco do Brasil · Ag 1234-5 · CC 67890-1'},
     governanca:{limitePag:2000, aprovador:'Síndico', reajusteTeto:10}};
   return Object.assign(base, o);
+}
+function obPct(x){
+  if(!x.obSteps) return x.onboarding||100;
+  var d=OB_STEPS.filter(function(s){return x.obSteps[s[0]];}).length;
+  return Math.round(d/OB_STEPS.length*100);
 }
 function makeCCD(){
   var c=[];
@@ -111,10 +125,11 @@ function makeCCD(){
     params:{taxa:480, diaVenc:15, multa:2, juros:1, conta:'Caixa · Ag 0312 · CC 1209-7'},
     kpi:{inad:18.5, saldo:12800, aPagar:9400, pend:0}}));
   // ajustes de configuração (personalização por condomínio)
-  byId(c,'aurora').app.assembleia=false;
+  byId(c,'aurora').app.assembleias=false;
   byId(c,'mirante').sgc.dp=false; byId(c,'mirante').sgc.portaria=false; byId(c,'mirante').app.reservas=false; byId(c,'mirante').agentes.dp.ativo=false;
   byId(c,'acacias').agentes.cobranca.autonomia='auto'; byId(c,'acacias').agentes.pagamentos.autonomia='auto';
   byId(c,'toscana').agentes.cobranca.ativo=false; byId(c,'toscana').agentes.pagamentos.ativo=false; byId(c,'toscana').agentes.contabil.autonomia='aprovacao'; byId(c,'toscana').sgc.previsao=false;
+  byId(c,'toscana').obSteps={dados:true, unidades:true, conta:false, sgc:true, app:false, agentes:false};
   byId(c,'ipes').agentes.cobranca.ativo=false; byId(c,'ipes').agentes.pagamentos.ativo=false; byId(c,'ipes').agentes.contabil.ativo=false; byId(c,'ipes').agentes.dp.ativo=false; byId(c,'ipes').agentes.atendimento.ativo=false;
   return c;
 }
@@ -133,9 +148,18 @@ function makeFeed(){
   ];
 }
 
-/* ---------- estado ---------- */
+/* ---------- estado + persistência (chave lida pelo SGC e pelo App) ---------- */
+var CCD_KEY='domus_ccd_v1';
 var CCD, FEED, SEC='visao', CUR=null, TAB='resumo';
 function condo(id){ return byId(CCD, id); }
+function ccdSave(){ try{ localStorage.setItem(CCD_KEY, JSON.stringify({v:1, condos:CCD, regua:COB_REGUA, feed:FEED})); }catch(e){} }
+function ccdLoad(){ try{ var s=JSON.parse(localStorage.getItem(CCD_KEY)||'null'); if(s && s.v===1 && s.condos && s.condos.length){ CCD=s.condos; if(s.regua && s.regua.length) COB_REGUA=s.regua; if(s.feed && s.feed.length) FEED=s.feed; return true; } }catch(e){} return false; }
+function addFeed(ag, condoNome, acao, det){
+  var tm; try{ tm=new Date().toLocaleTimeString('pt-BR').slice(0,5); }catch(e){ tm='--:--'; }
+  FEED.unshift({ag:ag, condo:condoNome, acao:acao, det:det, tm:tm});
+  if(FEED.length>60) FEED.length=60;
+  ccdSave();
+}
 
 /* ---------- navegação ---------- */
 function nav(sec){ SEC=sec; CUR=null; setActive(sec); render(); fecharSidebar(); }
@@ -222,7 +246,8 @@ function renderCondos(){
       +'<div class="foot-row"><span class="ccd-plano">'+x.plano+'</span><span class="muted" style="font-size:12px">SGC '+modSgc+'/'+SGC_FEATURES.length+' · App '+modApp+'/'+APP_FEATURES.length+' · '+agOn+' agentes</span></div>'
       +'</div>';
   }).join('');
-  return '<div class="grid">'+cards+'</div>';
+  var add='<div class="card span-4 ccd-condo ccd-add" onclick="abrirNovoCondo()"><div class="add-in"><span class="plus">+</span><div><div class="t">Adicionar condomínio</div><div class="d">Inicia o onboarding guiado pela CCD</div></div></div></div>';
+  return '<div class="grid">'+cards+add+'</div>';
 }
 
 /* ---------- FICHA DO CONDOMÍNIO ---------- */
@@ -230,7 +255,7 @@ function renderCondo(){
   var x=condo(CUR); if(!x) return renderCondos();
   var head='<div class="ccd-fh"><div><button class="back" onclick="nav(\'condos\')">&larr; Condomínios</button>'
     +'<h2>'+_esc(x.nome)+'</h2><div class="sub">'+pill(x.status)+' <span class="ccd-plano">'+x.plano+'</span> · '+_esc(x.cidade)+'/'+x.uf+' · '+x.unidades+' unidades · síndico '+_esc(x.sindico)+'</div></div>'
-    +'<div style="display:flex;gap:8px">'+(x.sgcUrl?'<button class="btn" onclick="abrirSGC(\''+x.id+'\')">Abrir SGC ↗</button>':'<button class="btn" onclick="toast(\'SGC em provisionamento para este condomínio.\')">Abrir SGC ↗</button>')+'</div></div>';
+    +'<div style="display:flex;gap:8px"><button class="btn" onclick="abrirEditCondo(\''+x.id+'\')">✎ Editar dados</button>'+(x.sgcUrl?'<button class="btn" onclick="abrirSGC(\''+x.id+'\')">Abrir SGC ↗</button>':'<button class="btn" onclick="toast(\'SGC em provisionamento para este condomínio.\')">Abrir SGC ↗</button>')+'</div></div>';
   var tabs='<div class="ccd-tabs">'
     +tab('resumo','Resumo')+tab('sgc','Configuração SGC')+tab('app','Configuração App')+tab('agentes','Agentes')
     +'</div>';
@@ -247,7 +272,14 @@ function condoResumo(x){
     +kpi('Saldo em caixa', x.status==='ativo'?brl(x.kpi.saldo):'—','Conta do condomínio','pinho')
     +kpi('Ações p/ governança', x.kpi.pend||0,'Aguardando aprovação','')
     +'</div>';
-  var ob = x.status==='onboarding' ? '<div class="card span-12"><h3>Onboarding</h3><div class="ob-track"><div class="ob-fill" style="width:'+x.onboarding+'%"></div></div><p class="muted" style="font-size:12.5px;margin-top:8px">'+x.onboarding+'% concluído. Próximo passo: cadastrar conta bancária e ativar os agentes.</p></div>' : '';
+  var ob='';
+  if(x.status==='onboarding'){
+    var pct=obPct(x);
+    ob='<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Onboarding · '+pct+'% concluído</h3>'
+      +(pct===100?'<button class="btn primary sm" onclick="ativarCondo(\''+x.id+'\')">✓ Concluir e ativar condomínio</button>':'<span class="muted" style="font-size:12px">Marque as etapas conforme avançam</span>')
+      +'</div><div class="ob-track" style="margin-top:12px"><div class="ob-fill" style="width:'+pct+'%"></div></div>'
+      +'<div class="ob-list">'+OB_STEPS.map(function(s){ var on=!!(x.obSteps&&x.obSteps[s[0]]); return '<div class="ob-step'+(on?' done':'')+'" onclick="toggleStep(\''+x.id+'\',\''+s[0]+'\')"><span class="ck">'+(on?'✓':'')+'</span><span>'+s[1]+'</span></div>'; }).join('')+'</div></div>';
+  }
   var info='<div class="card span-6"><h3>Identificação</h3>'
     +kv('Cidade/UF', x.cidade+'/'+x.uf)+kv('Unidades', String(x.unidades))+kv('Plano', x.plano)+kv('Cliente desde', x.desde)+kv('Síndico', x.sindico)+kv('Conta bancária', x.params.conta)+'</div>';
   var agOn=AGENTES.filter(function(a){return x.agentes[a[0]].ativo;});
@@ -324,12 +356,98 @@ function featRow(scope, id, f, on){
 }
 
 /* ---------- interações ---------- */
-function ccdToggle(scope, id, key, on){ var x=condo(id); x[scope][key]=on; toast((on?'Ativado':'Desativado')+': '+key+' · '+x.nome); }
-function ccdParam(id, key, val){ var x=condo(id); x.params[key]=(key==='conta')?val:(parseFloat(val)||0); toast('Parâmetro atualizado: '+key+' · '+x.nome); }
-function toggleAgente(id, ag, on){ var x=condo(id); x.agentes[ag].ativo=on; render(); toast((on?'Agente ligado':'Agente desligado')+': '+ag+' · '+x.nome); }
-function setAuton(id, ag, val){ var x=condo(id); x.agentes[ag].autonomia=val; if(val!=='off') x.agentes[ag].ativo=true; render(); toast('Autonomia: '+autonLabel(val)+' · '+ag); }
+function ccdToggle(scope, id, key, on){ var x=condo(id); x[scope][key]=on; addFeed('Config', x.nome, (on?'Módulo ativado':'Módulo desativado'), (scope==='sgc'?'SGC: ':'App: ')+key+' — mudança feita pela equipe Domus'); toast((on?'Ativado':'Desativado')+': '+key+' · '+x.nome+' — o '+(scope==='sgc'?'SGC':'App')+' já reflete.'); }
+function ccdParam(id, key, val){ var x=condo(id); x.params[key]=(key==='conta')?val:(parseFloat(val)||0); ccdSave(); toast('Parâmetro atualizado: '+key+' · '+x.nome); }
+function toggleAgente(id, ag, on){ var x=condo(id); x.agentes[ag].ativo=on; addFeed('Governança', x.nome, (on?'Agente ligado':'Agente desligado'), 'Agente '+ag+' '+(on?'ativado':'desativado')+' pela equipe Domus'); render(); toast((on?'Agente ligado':'Agente desligado')+': '+ag+' · '+x.nome); }
+function setAuton(id, ag, val){ var x=condo(id); x.agentes[ag].autonomia=val; if(val!=='off') x.agentes[ag].ativo=true; ccdSave(); render(); toast('Autonomia: '+autonLabel(val)+' · '+ag); }
 function abrirSGC(id){ var x=condo(id); if(x && x.sgcUrl){ window.location.href=x.sgcUrl; } else { toast('SGC em provisionamento.'); } }
-function ccdResetar(){ CCD=makeCCD(); FEED=makeFeed(); nav('visao'); toast('Mockup reiniciado.'); }
+function ccdResetar(){ try{ localStorage.removeItem(CCD_KEY); }catch(e){} CCD=makeCCD(); FEED=makeFeed(); ccdSave(); nav('visao'); toast('Mockup reiniciado.'); }
+
+/* ---------- onboarding ---------- */
+function toggleStep(id, k){ var x=condo(id); if(!x.obSteps) x.obSteps={}; x.obSteps[k]=!x.obSteps[k]; ccdSave(); render(); }
+function ativarCondo(id){
+  var x=condo(id); if(!x) return;
+  if(obPct(x)<100){ toast('Conclua todas as etapas do onboarding antes de ativar.'); return; }
+  x.status='ativo';
+  addFeed('Onboarding', x.nome, 'Condomínio ativado', 'Onboarding concluído — SGC, App e agentes operando');
+  render(); toast(x.nome+' ativado! 🎉');
+}
+function abrirNovoCondo(){
+  ['nc-nome','nc-cidade','nc-sindico','nc-conta'].forEach(function(i){ document.getElementById(i).value=''; });
+  document.getElementById('nc-uf').value='SP';
+  document.getElementById('nc-unidades').value=50;
+  document.getElementById('nc-plano').value='Pro';
+  document.getElementById('nc-taxa').value=600;
+  document.getElementById('nc-venc').value=10;
+  abrirModal('modal-novo-condo');
+}
+function salvarNovoCondo(ev){
+  ev.preventDefault();
+  var nome=document.getElementById('nc-nome').value.trim(); if(!nome){ toast('Dê um nome ao condomínio.'); return false; }
+  var id=nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||('condo'+(CCD.length+1));
+  while(condo(id)) id+='x';
+  var x=mkCondo({id:id, nome:nome,
+    cidade:document.getElementById('nc-cidade').value.trim()||'São Paulo', uf:(document.getElementById('nc-uf').value.trim()||'SP').toUpperCase().slice(0,2),
+    unidades:parseInt(document.getElementById('nc-unidades').value)||50,
+    plano:document.getElementById('nc-plano').value, status:'onboarding', onboarding:0,
+    sindico:document.getElementById('nc-sindico').value.trim()||'(a definir)', desde:'2026',
+    kpi:{inad:0, saldo:0, aPagar:0, pend:0}});
+  x.obSteps={dados:true, unidades:false, conta:false, sgc:false, app:false, agentes:false};
+  AGENTES.forEach(function(a){ x.agentes[a[0]].ativo=false; });
+  x.params.taxa=parseFloat(document.getElementById('nc-taxa').value)||600;
+  x.params.diaVenc=parseInt(document.getElementById('nc-venc').value)||10;
+  x.params.conta=document.getElementById('nc-conta').value.trim()||'(a definir)';
+  CCD.push(x);
+  addFeed('Onboarding', nome, 'Condomínio criado', 'Onboarding iniciado pela equipe Domus — '+x.unidades+' unidades, plano '+x.plano);
+  fecharModal('modal-novo-condo');
+  abrirCondo(id);
+  toast('Condomínio criado. Siga o checklist de onboarding.');
+  return false;
+}
+
+/* ---------- editar dados do condomínio ---------- */
+function abrirEditCondo(id){
+  var x=condo(id); if(!x) return;
+  document.getElementById('ec-id').value=x.id;
+  document.getElementById('ec-nome').value=x.nome;
+  document.getElementById('ec-cidade').value=x.cidade;
+  document.getElementById('ec-uf').value=x.uf;
+  document.getElementById('ec-unidades').value=x.unidades;
+  document.getElementById('ec-plano').value=x.plano;
+  document.getElementById('ec-status').value=x.status;
+  document.getElementById('ec-sindico').value=x.sindico;
+  document.getElementById('ec-desde').value=x.desde;
+  document.getElementById('ec-limite').value=x.governanca.limitePag;
+  document.getElementById('ec-aprovador').value=x.governanca.aprovador;
+  document.getElementById('ec-teto').value=x.governanca.reajusteTeto;
+  abrirModal('modal-edit-condo');
+}
+function salvarEditCondo(ev){
+  ev.preventDefault();
+  var x=condo(document.getElementById('ec-id').value); if(!x) return false;
+  x.nome=document.getElementById('ec-nome').value.trim()||x.nome;
+  x.cidade=document.getElementById('ec-cidade').value.trim()||x.cidade;
+  x.uf=(document.getElementById('ec-uf').value.trim()||x.uf).toUpperCase().slice(0,2);
+  x.unidades=parseInt(document.getElementById('ec-unidades').value)||x.unidades;
+  x.plano=document.getElementById('ec-plano').value;
+  x.status=document.getElementById('ec-status').value;
+  x.sindico=document.getElementById('ec-sindico').value.trim()||x.sindico;
+  x.desde=document.getElementById('ec-desde').value.trim()||x.desde;
+  x.governanca.limitePag=parseFloat(document.getElementById('ec-limite').value)||x.governanca.limitePag;
+  x.governanca.aprovador=document.getElementById('ec-aprovador').value.trim()||x.governanca.aprovador;
+  x.governanca.reajusteTeto=parseFloat(document.getElementById('ec-teto').value)||x.governanca.reajusteTeto;
+  addFeed('Config', x.nome, 'Dados atualizados', 'Cadastro e governança editados pela equipe Domus');
+  fecharModal('modal-edit-condo'); render(); toast('Dados de '+x.nome+' salvos.');
+  return false;
+}
+function excluirCondo(){
+  var id=document.getElementById('ec-id').value; var x=condo(id); if(!x) return;
+  if(!confirm('Excluir o condomínio "'+x.nome+'" da carteira? Esta ação remove a configuração dele na CCD.')) return;
+  if(!confirm('Tem certeza? Confirme novamente para excluir "'+x.nome+'".')) return;
+  CCD=CCD.filter(function(c){return c.id!==id;});
+  addFeed('Config', x.nome, 'Condomínio excluído', 'Removido da carteira pela equipe Domus');
+  fecharModal('modal-edit-condo'); nav('condos'); toast(x.nome+' excluído.');
+}
 
 /* ---------- cobrança: régua & mensagens (modais) ---------- */
 function cobRender(tpl, vars){ return String(tpl||'').replace(/\{\{(\w+)\}\}/g, function(_,k){ return (vars[k]!=null)?vars[k]:('{{'+k+'}}'); }); }
@@ -383,6 +501,7 @@ function salvarMsgCcd(ev){
   e.assunto=document.getElementById('msgccd-assunto').value;
   e.email=document.getElementById('msgccd-email').value;
   e.wpp=document.getElementById('msgccd-wppmsg').value;
+  ccdSave();
   fecharModal('modal-msg-ccd'); abrirReguaCcd(); toast('Mensagem da etapa "'+e.rotulo+'" salva.');
   return false;
 }
@@ -398,8 +517,11 @@ function toast(msg){
 
 /* ---------- boot ---------- */
 document.addEventListener('DOMContentLoaded', function(){
-  CCD=makeCCD(); FEED=makeFeed();
-  ['modal-regua-ccd','modal-msg-ccd','modal-prev-ccd'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('click', function(ev){ if(ev.target.id===id) el.classList.remove('open'); }); });
+  if(!ccdLoad()){ CCD=makeCCD(); FEED=makeFeed(); }
+  ccdSave();
+  // navegação da sidebar (delegação de clique)
+  document.getElementById('nav').addEventListener('click', function(e){ var a=e.target.closest('a'); if(a && a.dataset.sec) nav(a.dataset.sec); });
+  ['modal-regua-ccd','modal-msg-ccd','modal-prev-ccd','modal-novo-condo','modal-edit-condo'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('click', function(ev){ if(ev.target.id===id) el.classList.remove('open'); }); });
   ['msgccd-email','msgccd-wppmsg','msgccd-assunto'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('focus', function(){ _msgLastFocus=id; }); });
   setActive('visao'); render();
 });
