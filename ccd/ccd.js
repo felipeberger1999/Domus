@@ -152,8 +152,8 @@ function makeFeed(){
 var CCD_KEY='domus_ccd_v1';
 var CCD, FEED, SEC='visao', CUR=null, TAB='resumo';
 function condo(id){ return byId(CCD, id); }
-function ccdSave(){ try{ localStorage.setItem(CCD_KEY, JSON.stringify({v:2, condos:CCD, regua:COB_REGUA, feed:FEED})); }catch(e){} }
-function ccdLoad(){ try{ var s=JSON.parse(localStorage.getItem(CCD_KEY)||'null'); if(s && s.v===2 && s.condos && s.condos.length){ CCD=s.condos; if(s.regua && s.regua.length) COB_REGUA=s.regua; if(s.feed && s.feed.length) FEED=s.feed; return true; } }catch(e){} return false; }
+function ccdSave(){ try{ localStorage.setItem(CCD_KEY, JSON.stringify({v:3, condos:CCD, regua:COB_REGUA, feed:FEED})); }catch(e){} }
+function ccdLoad(){ try{ var s=JSON.parse(localStorage.getItem(CCD_KEY)||'null'); if(s && s.v===3 && s.condos && s.condos.length){ CCD=s.condos; if(s.regua && s.regua.length) COB_REGUA=s.regua; if(s.feed && s.feed.length) FEED=s.feed; return true; } }catch(e){} return false; }
 function addFeed(ag, condoNome, acao, det){
   var tm; try{ tm=new Date().toLocaleTimeString('pt-BR').slice(0,5); }catch(e){ tm='--:--'; }
   FEED.unshift({ag:ag, condo:condoNome, acao:acao, det:det, tm:tm});

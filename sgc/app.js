@@ -330,16 +330,16 @@ function calcBalancete(de,ate){
   const cpIni=sum(DATA.contasPagar.filter(c=>(c.status==='pendente'||c.status==='aprovada')&&before(c.competencia)),c=>c.total);
   const plIni=caixaIni+crIni-cpIni;
   const dgrp={}; desp.forEach(c=>{const k=c.grupo+'|'+c.conta;dgrp[k]=(dgrp[k]||0)+c.total;});
-  const conta=(cod,nome,ini,deb,cred,nat)=>({tipo:'c',cod,nome,ini,deb,cred,nat,fim:nat==='D'?ini+deb-cred:ini+cred-deb});
+  const conta=(cod,nome,ini,deb,cred,nat,rk)=>({tipo:'c',cod,nome,ini,deb,cred,nat,rk,fim:nat==='D'?ini+deb-cred:ini+cred-deb});
   const linhas=[];
   const sec=(cod,nome,cts)=>{linhas.push({tipo:'h',cod,nome});cts.forEach(c=>linhas.push(c));linhas.push({tipo:'s',nome:'Subtotal '+nome,ini:sum(cts,c=>c.ini),deb:sum(cts,c=>c.deb),cred:sum(cts,c=>c.cred),fim:sum(cts,c=>c.fim)});};
-  sec('1','ATIVO',[conta('1.1.01','Caixa e equivalentes (disponível)',caixaIni,R,G,'D'),conta('1.1.02','Contas a receber — cotas condominiais',crIni,E,R,'D')]);
-  sec('2','PASSIVO',[conta('2.1.01','Contas a pagar — fornecedores',cpIni,G,P,'C')]);
-  sec('3','PATRIMÔNIO LÍQUIDO',[conta('3.1.01','Fundo de reserva / superávit acumulado',plIni,0,0,'C')]);
-  sec('4','RECEITAS',[conta('4.1.01','Taxas condominiais',0,0,E,'C')]);
+  sec('1','ATIVO',[conta('1.1.01','Caixa e equivalentes (disponível)',caixaIni,R,G,'D','caixa'),conta('1.1.02','Contas a receber — cotas condominiais',crIni,E,R,'D','receber')]);
+  sec('2','PASSIVO',[conta('2.1.01','Contas a pagar — fornecedores',cpIni,G,P,'C','forn')]);
+  sec('3','PATRIMÔNIO LÍQUIDO',[conta('3.1.01','Fundo de reserva / superávit acumulado',plIni,0,0,'C','pl')]);
+  sec('4','RECEITAS',[conta('4.1.01','Taxas condominiais',0,0,E,'C','receita')]);
   linhas.push({tipo:'h',cod:'5',nome:'DESPESAS'});
   let dDeb=0,dFim=0;
-  GRUPO_ORDER.forEach(g=>{const p=PLANO.find(p=>p.grupo===g);const cts=[];p.contas.forEach(cn=>{const v=dgrp[g+'|'+cn];if(v)cts.push(conta(codConta(g,cn),cn,0,v,0,'D'));});if(!cts.length)return;linhas.push({tipo:'h2',cod:codGrupo(g),nome:g});cts.forEach(c=>linhas.push(c));const sd=sum(cts,c=>c.deb),sf=sum(cts,c=>c.fim);linhas.push({tipo:'s',nome:'Subtotal '+g,ini:0,deb:sd,cred:0,fim:sf});dDeb+=sd;dFim+=sf;});
+  GRUPO_ORDER.forEach(g=>{const p=PLANO.find(p=>p.grupo===g);const cts=[];p.contas.forEach(cn=>{const v=dgrp[g+'|'+cn];if(v)cts.push(conta(codConta(g,cn),cn,0,v,0,'D','D|'+g+'|'+cn));});if(!cts.length)return;linhas.push({tipo:'h2',cod:codGrupo(g),nome:g});cts.forEach(c=>linhas.push(c));const sd=sum(cts,c=>c.deb),sf=sum(cts,c=>c.fim);linhas.push({tipo:'s',nome:'Subtotal '+g,ini:0,deb:sd,cred:0,fim:sf});dDeb+=sd;dFim+=sf;});
   linhas.push({tipo:'s',nome:'Subtotal DESPESAS',ini:0,deb:dDeb,cred:0,fim:dFim});
   const cs=linhas.filter(l=>l.tipo==='c');
   return {linhas,totDeb:sum(cs,l=>l.deb),totCred:sum(cs,l=>l.cred),totFimD:sum(cs.filter(l=>l.nat==='D'),l=>l.fim),totFimC:sum(cs.filter(l=>l.nat==='C'),l=>l.fim)};
@@ -350,6 +350,36 @@ function setPeriodo(k,v){PERIODO[k]=v;if(PERIODO.de>PERIODO.ate){if(k==='de')PER
 function presetPeriodo(p){const L=COMPETS.length;if(p==='mes'){PERIODO.de=PERIODO.ate=COMPETS[L-1];}else if(p==='ant'){PERIODO.de=PERIODO.ate=COMPETS[L-2];}else if(p==='tri'){PERIODO.de=COMPETS[Math.max(0,L-3)];PERIODO.ate=COMPETS[L-1];}else{PERIODO.de=COMPETS[0];PERIODO.ate=COMPETS[L-1];}render();}
 function setBalData(v){BAL_DATA=v;render();}
 function setBlc(k,v){if(k==='de')BLC_DE=v;else BLC_ATE=v;if(BLC_DE>BLC_ATE){if(k==='de')BLC_ATE=v;else BLC_DE=v;}render();}
+function razaoSGC(rk){
+  const de=BLC_DE, ate=BLC_ATE, inR=c=>c>=de&&c<=ate, before=c=>c<de;
+  const prev=COMPETS[COMPETS.indexOf(de)-1], compsIn=COMPETS.filter(inR);
+  const emis=c=>{const bs=DATA.boletos.filter(b=>b.status!=='pendente'&&b.competencia===c);return {n:bs.length,val:sum(bs,b=>b.valor)};};
+  const rec=c=>{const bs=DATA.boletos.filter(b=>b.status==='pago'&&b.competencia===c);return {n:bs.length,val:sum(bs,b=>b.valor)};};
+  const caixaIni=prev?saldoCaixaAte(prev):DATA.condominio.saldoInicial;
+  const crIni=sum(DATA.boletos.filter(b=>(b.status==='aberto'||b.status==='vencido')&&before(b.competencia)),b=>b.valor);
+  const cpIni=sum(DATA.contasPagar.filter(c=>(c.status==='pendente'||c.status==='aprovada')&&before(c.competencia)),c=>c.total);
+  const plIni=caixaIni+crIni-cpIni;
+  let movs=[], titulo='';
+  if(rk==='caixa'){ titulo='Caixa e equivalentes'; movs.push({data:de+'-01',hist:'Saldo inicial de caixa',deb:caixaIni,cred:0}); compsIn.forEach(c=>{const r=rec(c);if(r.val)movs.push({data:c+'-15',hist:'Recebimento de cotas '+mlabel(c)+' ('+r.n+' un.)',deb:r.val,cred:0});}); DATA.contasPagar.filter(c=>c.status==='paga'&&inR(c.competencia)).forEach(c=>movs.push({data:c.pago_em||c.vencimento,hist:'Pagamento '+c.numero+' — '+c.descricao,deb:0,cred:c.total})); }
+  else if(rk==='receber'){ titulo='Contas a receber — cotas'; movs.push({data:de+'-01',hist:'Saldo inicial — cotas a receber',deb:crIni,cred:0}); compsIn.forEach(c=>{const e=emis(c);if(e.val)movs.push({data:c+'-01',hist:'Emissão de cotas '+mlabel(c)+' ('+e.n+' un.)',deb:e.val,cred:0});const r=rec(c);if(r.val)movs.push({data:c+'-15',hist:'Baixa por recebimento '+mlabel(c)+' ('+r.n+' un.)',deb:0,cred:r.val});}); }
+  else if(rk==='forn'){ titulo='Contas a pagar — fornecedores'; movs.push({data:de+'-01',hist:'Saldo inicial — fornecedores',deb:0,cred:cpIni}); DATA.contasPagar.filter(c=>c.status!=='negada'&&inR(c.competencia)).forEach(c=>{movs.push({data:c.vencimento,hist:'Lançamento '+c.numero+' — '+c.descricao,deb:0,cred:c.total});if(c.status==='paga')movs.push({data:c.pago_em||c.vencimento,hist:'Pagamento '+c.numero,deb:c.total,cred:0});}); }
+  else if(rk==='pl'){ titulo='Fundo de reserva / superávit acumulado'; movs.push({data:de+'-01',hist:'Abertura do patrimônio líquido',deb:0,cred:plIni}); }
+  else if(rk==='receita'){ titulo='Taxas condominiais'; compsIn.forEach(c=>{const e=emis(c);if(e.val)movs.push({data:c+'-01',hist:'Receita de cotas '+mlabel(c)+' ('+e.n+' un.)',deb:0,cred:e.val});}); }
+  else if(rk.indexOf('D|')===0){ const p=rk.split('|'),g=p[1],cn=p[2]; titulo=g+' › '+cn; DATA.contasPagar.filter(c=>c.status!=='negada'&&inR(c.competencia)&&(c.grupo||'')===g&&(c.conta||c.categoria||'')===cn).forEach(c=>movs.push({data:c.vencimento,hist:c.numero+' — '+c.descricao+' ('+c.fornecedor+')',deb:c.total,cred:0})); }
+  movs.sort((a,b)=>a.data<b.data?-1:1);
+  const natC=(rk==='forn'||rk==='pl'||rk==='receita');
+  let run=0; movs.forEach(m=>{run=natC?Math.round((run+m.cred-m.deb)*100)/100:Math.round((run+m.deb-m.cred)*100)/100;m.saldo=run;m.natC=natC;});
+  return {titulo,movs};
+}
+function verRazao(rk){
+  const {titulo,movs}=razaoSGC(rk);
+  const rows=movs.slice(0,120).map(m=>{const sl=m.saldo>=0?brl(m.saldo)+(m.natC?' C':' D'):brl(-m.saldo)+(m.natC?' D':' C');return `<tr><td style="white-space:nowrap">${dataBR(m.data)}</td><td>${m.hist}</td><td class="num">${m.deb?brl(m.deb):'—'}</td><td class="num">${m.cred?brl(m.cred):'—'}</td><td class="num" style="white-space:nowrap">${sl}</td></tr>`;}).join('');
+  document.querySelector('#modal-razao .rz-title').textContent='Razão · '+titulo;
+  document.querySelector('#modal-razao .rz-sub').innerHTML=`${mlabel(BLC_DE)} a ${mlabel(BLC_ATE)} · ${movs.length} movimento(s)${movs.length>120?' (mostrando 120)':''}`;
+  document.querySelector('#modal-razao .rz-body').innerHTML=`<div class="tblx"><table class="tbl" style="min-width:520px"><thead><tr><th>Data</th><th>Histórico</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  document.getElementById('modal-razao').classList.add('open');
+}
+function fecharRazao(){document.getElementById('modal-razao').classList.remove('open');}
 function renderResultado(){
   const dre=calcDRE(),flx=calcFluxo(),bal=calcBalanco(BAL_DATA);
   const opt=sel=>COMPETS.map(c=>`<option value="${c}" ${c===sel?'selected':''}>${mlabel(c)}</option>`).join('');
@@ -361,10 +391,10 @@ function renderResultado(){
   const blc=calcBalancete(BLC_DE,BLC_ATE);
   const fmtb=v=>v?brl(v):'–';
   const blcRows=blc.linhas.map(l=>{
-    if(l.tipo==='h')return `<tr class="grp"><td>${l.cod}</td><td>${l.nome}</td><td></td><td></td><td></td><td></td></tr>`;
-    if(l.tipo==='h2')return `<tr><td class="muted">${l.cod}</td><td style="font-weight:600">${l.nome}</td><td></td><td></td><td></td><td></td></tr>`;
-    if(l.tipo==='s')return `<tr style="font-weight:600;background:rgba(228,200,180,.12)"><td></td><td>${l.nome}</td><td class="num">${fmtb(l.ini)}</td><td class="num">${fmtb(l.deb)}</td><td class="num">${fmtb(l.cred)}</td><td class="num">${fmtb(l.fim)}</td></tr>`;
-    return `<tr><td class="muted">${l.cod}</td><td style="padding-left:20px">${l.nome}</td><td class="num">${fmtb(l.ini)}</td><td class="num">${fmtb(l.deb)}</td><td class="num">${fmtb(l.cred)}</td><td class="num">${fmtb(l.fim)} <span class="muted" style="font-size:10px">${l.nat}</span></td></tr>`;
+    if(l.tipo==='h')return `<tr class="grp"><td>${l.cod}</td><td>${l.nome}</td><td></td><td></td><td></td><td></td><td class="no-print"></td></tr>`;
+    if(l.tipo==='h2')return `<tr><td class="muted">${l.cod}</td><td style="font-weight:600">${l.nome}</td><td></td><td></td><td></td><td></td><td class="no-print"></td></tr>`;
+    if(l.tipo==='s')return `<tr style="font-weight:600;background:rgba(228,200,180,.12)"><td></td><td>${l.nome}</td><td class="num">${fmtb(l.ini)}</td><td class="num">${fmtb(l.deb)}</td><td class="num">${fmtb(l.cred)}</td><td class="num">${fmtb(l.fim)}</td><td class="no-print"></td></tr>`;
+    return `<tr><td class="muted">${l.cod}</td><td style="padding-left:20px">${l.nome}</td><td class="num">${fmtb(l.ini)}</td><td class="num">${fmtb(l.deb)}</td><td class="num">${fmtb(l.cred)}</td><td class="num">${fmtb(l.fim)} <span class="muted" style="font-size:10px">${l.nat}</span></td><td class="num no-print">${l.rk?`<button class="btn sm" onclick="verRazao('${l.rk}')">Razão</button>`:''}</td></tr>`;
   }).join('');
   const hoje=new Date().toLocaleDateString('pt-BR');
   return `<div class="ai-note no-print"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E5A4F" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 16v-4M12 16v-7M16 16v-2"/></svg><div>O <strong>agente Contábil</strong> mantém DRE, Balanço Patrimonial, Fluxo de Caixa e o <strong>Balancete</strong> sempre atualizados, a partir das contas a pagar e dos recebíveis. Filtre o período (inclusive <strong>meses anteriores</strong>) e <strong>emita o PDF</strong> do que estiver na tela.</div></div>
@@ -417,10 +447,10 @@ function renderResultado(){
        </tbody></table>
      </div></div>
    <div class="card span-12"><div class="flex-between"><h3 style="margin:0">Balancete de Verificação <span class="chip">competência</span></h3><div style="display:flex;gap:8px;align-items:center"><label style="font-size:11px;color:var(--musgo);font-weight:600">De</label><select class="inp" style="width:auto" onchange="setBlc('de',this.value)">${COMPETS.map(c=>`<option value="${c}" ${c===BLC_DE?'selected':''}>${mlabel(c)}</option>`).join('')}</select><label style="font-size:11px;color:var(--musgo);font-weight:600">Até</label><select class="inp" style="width:auto" onchange="setBlc('ate',this.value)">${COMPETS.map(c=>`<option value="${c}" ${c===BLC_ATE?'selected':''}>${mlabel(c)}</option>`).join('')}</select></div></div>
-     <table class="tbl" style="margin-top:12px"><thead><tr><th>Código</th><th>Conta</th><th class="num">Saldo inicial</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo final</th></tr></thead>
+     <div class="tblx"><table class="tbl" style="margin-top:12px;min-width:820px"><thead><tr><th>Código</th><th>Conta</th><th class="num">Saldo inicial</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo final</th><th class="num no-print">Razão</th></tr></thead>
      <tbody>${blcRows}
-       <tr style="font-weight:700;border-top:2px solid var(--linha)"><td></td><td>TOTAIS</td><td class="num">—</td><td class="num">${brl(blc.totDeb)}</td><td class="num">${brl(blc.totCred)}</td><td class="num">—</td></tr>
-     </tbody></table>
+       <tr style="font-weight:700;border-top:2px solid var(--linha)"><td></td><td>TOTAIS</td><td class="num">—</td><td class="num">${brl(blc.totDeb)}</td><td class="num">${brl(blc.totCred)}</td><td class="num">—</td><td class="no-print"></td></tr>
+     </tbody></table></div>
      <p class="muted" style="font-size:12px;margin-top:10px">Inclui contas patrimoniais (Ativo, Passivo, PL) e de resultado (Receitas, Despesas) no plano de contas. Verificação: <strong>Σ débitos = Σ créditos</strong> (${brl(blc.totDeb)}) e saldos finais <strong>devedores = credores</strong> (${brl(blc.totFimD)}).</p></div>
   </div>`;
 }
@@ -623,8 +653,8 @@ function excluirUnidade(id){const nm=DATA.moradores.filter(m=>m.unidade_id===id)
 
 /* init */
 document.getElementById('nav').addEventListener('click',e=>{const a=e.target.closest('a');if(a)nav(a.dataset.sec);});
-['modal-pessoa','modal-unidade','modal-regua','modal-veiculo','modal-animal','modal-convocar','modal-aviso'].forEach(id=>document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id)e.currentTarget.classList.remove('open');}));
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharPessoa();fecharUnidade();fecharRegua();fecharVeiculo();fecharAnimal();fecharConvocar();fecharAviso();}});
+['modal-pessoa','modal-unidade','modal-regua','modal-veiculo','modal-animal','modal-convocar','modal-aviso','modal-razao'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',e=>{if(e.target.id===id)e.currentTarget.classList.remove('open');});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharPessoa();fecharUnidade();fecharRegua();fecharVeiculo();fecharAnimal();fecharConvocar();fecharAviso();fecharRazao();}});
 nav('visao');
 
 
@@ -1216,7 +1246,7 @@ document.addEventListener('click', function(e){ var s=document.getElementById('t
    (felipe2). Sem configuração da CCD (ex.: dentro do app), tudo fica ligado. */
 (function(){
   var cfg=null;
-  try{ var s=JSON.parse(localStorage.getItem('domus_ccd_v1')||'null'); if(s && s.v===2 && s.condos) cfg=s.condos.find(function(x){return x.id==='felipe2';})||null; }catch(e){}
+  try{ var s=JSON.parse(localStorage.getItem('domus_ccd_v1')||'null'); if(s && s.v===3 && s.condos) cfg=s.condos.find(function(x){return x.id==='felipe2';})||null; }catch(e){}
   if(!cfg) return;
   window.CCD_CONDO=cfg;
   // módulos desligados somem do menu

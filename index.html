@@ -1212,7 +1212,7 @@ GSCREENS.gsgc=function(){ const T={visao:'Visão Geral',cadastro:'Cadastro',asse
    configuração (ex.: rodando embarcado sem CCD), tudo fica ligado. */
 (function(){
   var app=null;
-  try{ var s=JSON.parse(localStorage.getItem('domus_ccd_v1')||'null'); if(s && s.v===2 && s.condos){ var f=s.condos.find(function(x){return x.id==='felipe2';}); app=f? f.app : null; } }catch(e){}
+  try{ var s=JSON.parse(localStorage.getItem('domus_ccd_v1')||'null'); if(s && s.v===3 && s.condos){ var f=s.condos.find(function(x){return x.id==='felipe2';}); app=f? f.app : null; } }catch(e){}
   if(!app) return;
   function ligada(k){ return app[k]!==false; }
   var FEAT={cobrancas:1,pagamento:1,comunicados:1,reservas:1,assembleias:1,visitantes:1,servicos:1,entregas:1,saude:1};

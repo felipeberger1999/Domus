@@ -56,8 +56,18 @@ function oper(x){
   }
   o.assembleias.push({id:1, titulo:'Assembleia Geral Ordinária 2026', tipo:'ordinaria', data:'2026-03-20', local:'Salão de festas', status:'realizada', pauta:'1) Prestação de contas 2025; 2) Previsão orçamentária 2026; 3) Eleição de síndico.', ata:'Aprovadas por maioria a prestação de contas de 2025 e a previsão orçamentária de 2026. Síndico(a) '+x.sindico+' conduzirá o mandato de 2026.'});
   if(!emOnb && rnd()>0.45){ o.assembleias.unshift({id:2, titulo:'AGE — Melhorias e rateios', tipo:'extraordinaria', data:'2026-06-28', local:'Salão de festas', status:'convocada', pauta:'1) Orçamentos de melhorias; 2) Definição de rateio extraordinário.', ata:''}); }
+  o.saldoInicial = emOnb ? 0 : Math.round(x.unidades*x.params.taxa*2.4);
   x.oper=o;
   return o;
+}
+/* competências presentes (boletos + contas a pagar), ordenadas */
+function compsCcd(x){ var o=oper(x), s={}; o.boletos.forEach(function(b){s[b.competencia]=1;}); o.contasPagar.forEach(function(c){s[c.competencia]=1;}); return Object.keys(s).sort(); }
+/* saldo de caixa acumulado até o fim de uma competência (recebimentos − pagamentos) */
+function saldoCaixaAteCcd(x, comp){
+  var o=oper(x);
+  var rec=o.boletos.filter(function(b){return b.status==='pago' && b.competencia<=comp;}).reduce(function(s,b){return s+b.valor;},0);
+  var pag=o.contasPagar.filter(function(c){return c.status==='paga' && c.competencia<=comp;}).reduce(function(s,c){return s+c.valor;},0);
+  return (o.saldoInicial||0) + rec - pag;
 }
 function syncKpi(x){
   var o=x.oper; if(!o) return;
@@ -65,6 +75,7 @@ function syncKpi(x){
   x.kpi.inad = x.unidades ? Math.round(venc/x.unidades*1000)/10 : 0;
   x.kpi.pend = o.contasPagar.filter(function(c){return c.status==='pendente';}).length;
   x.kpi.aPagar = o.contasPagar.filter(function(c){return c.status==='pendente'||c.status==='aprovada';}).reduce(function(s,c){return s+c.valor;},0);
+  var cs=compsCcd(x); x.kpi.saldo = cs.length ? saldoCaixaAteCcd(x, cs[cs.length-1]) : (o.saldoInicial||0);
 }
 function operTodos(){ CCD.forEach(function(x){ oper(x); syncKpi(x); }); ccdSave(); }
 
@@ -284,7 +295,7 @@ function excluirCotaCcd(){
 }
 function baixarCota(cid, bid){
   var x=condo(cid); var b=oper(x).boletos.find(function(z){return z.id===bid;}); if(!b||b.status==='pago') return;
-  b.status='pago'; x.kpi.saldo=(x.kpi.saldo||0)+b.valor; syncKpi(x);
+  b.status='pago'; syncKpi(x);
   addFeed('Cobrança', x.nome, 'Pagamento registrado', 'Cota '+b.unidade+' ('+mlabelC(b.competencia)+') — '+brl(b.valor)+' baixada pela equipe Domus');
   render(); toast('Pagamento da unidade '+b.unidade+' registrado.');
 }
@@ -295,6 +306,9 @@ function segundaVia(cid, bid){
 }
 
 /* ---------- aba CONTAS A PAGAR ---------- */
+var PG_COMP='', PG_ST='', PG_GRP='', PG_FORN='';
+function pagarFiltro(k,v){ if(k==='comp')PG_COMP=v; else if(k==='st')PG_ST=v; else if(k==='grp')PG_GRP=v; else if(k==='forn')PG_FORN=v; render(); }
+function pagarLimpar(){ PG_COMP=PG_ST=PG_GRP=PG_FORN=''; render(); }
 function condoPagar(x){
   var o=oper(x);
   var pend=o.contasPagar.filter(function(c){return c.status==='pendente';});
@@ -311,18 +325,33 @@ function condoPagar(x){
     if(c.status==='aprovada') return '<button class="btn pinho sm" onclick="liquidarCp(\''+x.id+'\','+c.id+')">Liquidar</button>'+ed;
     return ed;
   };
-  var ord=o.contasPagar.slice().sort(function(a,b){ var r={pendente:0,aprovada:1,paga:2,negada:3}; return (r[a.status]-r[b.status])||(a.vencimento>b.vencimento?1:-1); });
+  var comps=compsCcd(x);
+  var grupos=[]; o.contasPagar.forEach(function(c){ if(grupos.indexOf(c.grupo)<0) grupos.push(c.grupo); }); grupos.sort();
+  var forns=[]; o.contasPagar.forEach(function(c){ if(forns.indexOf(c.fornecedor)<0) forns.push(c.fornecedor); }); forns.sort();
+  var lista=o.contasPagar.filter(function(c){
+    return (!PG_COMP||c.competencia===PG_COMP) && (!PG_ST||c.status===PG_ST) && (!PG_GRP||c.grupo===PG_GRP) && (!PG_FORN||c.fornecedor===PG_FORN);
+  });
+  var ord=lista.slice().sort(function(a,b){ var r={pendente:0,aprovada:1,paga:2,negada:3}; return (r[a.status]-r[b.status])||(a.vencimento>b.vencimento?1:-1); });
+  var totFiltro=lista.reduce(function(s,c){return s+c.valor;},0);
   var rows=ord.map(function(c){
-    return '<tr><td style="white-space:nowrap"><strong>'+c.numero+'</strong></td><td style="min-width:280px"><div style="font-weight:600;line-height:1.35">'+_esc(c.descricao)+'</div><div class="muted" style="font-size:11.5px;margin-top:3px">'+_esc(c.fornecedor)+' · '+_esc(c.grupo)+'</div></td><td style="white-space:nowrap">'+dataBRC(c.vencimento)+'</td><td class="num"><strong>'+brl(c.valor)+'</strong></td><td><span class="badge '+c.status+'">'+c.status+'</span></td><td class="num" style="white-space:nowrap">'+ac(c)+'</td></tr>';
+    return '<tr><td style="white-space:nowrap"><strong>'+c.numero+'</strong></td><td style="min-width:280px"><div style="font-weight:600;line-height:1.35">'+_esc(c.descricao)+'</div><div class="muted" style="font-size:11.5px;margin-top:3px">'+_esc(c.fornecedor)+' · '+_esc(c.grupo)+' · '+mlabelC(c.competencia)+'</div></td><td style="white-space:nowrap">'+dataBRC(c.vencimento)+'</td><td class="num"><strong>'+brl(c.valor)+'</strong></td><td><span class="badge '+c.status+'">'+c.status+'</span></td><td class="num" style="white-space:nowrap">'+ac(c)+'</td></tr>';
   }).join('');
-  var tabela='<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Lançamentos <span class="r">'+o.contasPagar.length+'</span></h3><button class="btn primary sm" onclick="abrirLancarCcd(\''+x.id+'\')">+ Lançar conta</button></div>'
-    +'<div class="tblx" style="margin-top:10px"><table class="tbl" style="min-width:880px"><thead><tr><th>Nº</th><th style="min-width:280px">Descrição</th><th>Vencimento</th><th class="num">Valor</th><th>Status</th><th class="num">Ações</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+  var sel=function(on,val,lbl){ return '<option value="'+_esc(val)+'"'+(on===val?' selected':'')+'>'+_esc(lbl)+'</option>'; };
+  var filtros='<div class="pg-toolbar">'
+    +'<select class="inp" style="width:auto" onchange="pagarFiltro(\'comp\',this.value)">'+sel(PG_COMP,'','Todas as competências')+comps.map(function(c){return sel(PG_COMP,c,mlabelC(c));}).join('')+'</select>'
+    +'<select class="inp" style="width:auto" onchange="pagarFiltro(\'st\',this.value)">'+sel(PG_ST,'','Todos os status')+['pendente','aprovada','paga','negada'].map(function(s){return sel(PG_ST,s,s);}).join('')+'</select>'
+    +'<select class="inp" style="width:auto" onchange="pagarFiltro(\'grp\',this.value)">'+sel(PG_GRP,'','Todos os grupos')+grupos.map(function(g){return sel(PG_GRP,g,g);}).join('')+'</select>'
+    +'<select class="inp" style="width:auto" onchange="pagarFiltro(\'forn\',this.value)">'+sel(PG_FORN,'','Todos os fornecedores')+forns.map(function(f){return sel(PG_FORN,f,f);}).join('')+'</select>'
+    +((PG_COMP||PG_ST||PG_GRP||PG_FORN)?'<button class="btn sm" onclick="pagarLimpar()">Limpar filtros</button>':'')+'</div>';
+  var tabela='<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Lançamentos <span class="r">'+lista.length+' de '+o.contasPagar.length+' · '+brl(totFiltro)+'</span></h3><button class="btn primary sm" onclick="abrirLancarCcd(\''+x.id+'\')">+ Lançar conta</button></div>'
+    +filtros
+    +'<div class="tblx" style="margin-top:10px"><table class="tbl" style="min-width:880px"><thead><tr><th>Nº</th><th style="min-width:280px">Descrição</th><th>Vencimento</th><th class="num">Valor</th><th>Status</th><th class="num">Ações</th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" class="muted" style="padding:18px">Nenhum lançamento com esses filtros.</td></tr>')+'</tbody></table></div>'
     +'<p class="muted" style="font-size:12px;margin-top:10px">Aprovações aqui valem como aprovação da administradora; o agente Pagamentos executa e o Contábil lança o movimento.</p></div>';
   return kpis+'<div class="grid">'+tabela+'</div>';
 }
 function aprovarCp(cid, id){ var x=condo(cid); var c=oper(x).contasPagar.find(function(z){return z.id===id;}); if(!c||c.status!=='pendente') return; c.status='aprovada'; syncKpi(x); addFeed('Pagamentos', x.nome, 'Conta aprovada', c.numero+' '+c.descricao+' — '+brl(c.valor)+' aprovada pela Domus'); render(); toast(c.numero+' aprovada.'); }
 function negarCp(cid, id){ var x=condo(cid); var c=oper(x).contasPagar.find(function(z){return z.id===id;}); if(!c||c.status!=='pendente') return; if(!confirm('Negar o lançamento '+c.numero+' ('+c.descricao+')?')) return; c.status='negada'; syncKpi(x); addFeed('Pagamentos', x.nome, 'Conta negada', c.numero+' '+c.descricao+' recusada pela Domus'); render(); toast(c.numero+' negada.'); }
-function liquidarCp(cid, id){ var x=condo(cid); var c=oper(x).contasPagar.find(function(z){return z.id===id;}); if(!c||c.status!=='aprovada') return; c.status='paga'; x.kpi.saldo=(x.kpi.saldo||0)-c.valor; syncKpi(x); addFeed('Pagamentos', x.nome, 'Fornecedor pago', c.numero+' '+c.descricao+' — '+brl(c.valor)+' liquidada'); render(); toast(c.numero+' liquidada.'); }
+function liquidarCp(cid, id){ var x=condo(cid); var c=oper(x).contasPagar.find(function(z){return z.id===id;}); if(!c||c.status!=='aprovada') return; c.status='paga'; syncKpi(x); addFeed('Pagamentos', x.nome, 'Fornecedor pago', c.numero+' '+c.descricao+' — '+brl(c.valor)+' liquidada'); render(); toast(c.numero+' liquidada.'); }
 function abrirLancarCcd(cid, id){
   document.getElementById('lc-condo').value=cid;
   document.getElementById('lc-id').value=id||'';
@@ -380,103 +409,140 @@ function excluirLancCcd(){
   fecharModal('modal-lancar-ccd'); render(); toast(c.numero+' excluído.');
 }
 
-/* ---------- aba CONTÁBIL ---------- */
+/* ---------- aba CONTÁBIL (fiel ao SGC) ---------- */
+var CCD_GRUPOS=['Pessoal','Utilities','Manutenção','Administradora','Impostos','Outros'];
+var BL_DE='', BL_ATE='';
+function setBlcCcd(k,v){ if(k==='de')BL_DE=v; else BL_ATE=v; if(BL_DE&&BL_ATE&&BL_DE>BL_ATE){ if(k==='de')BL_ATE=v; else BL_DE=v; } render(); }
+function blcPeriodo(x){ var cs=compsCcd(x); if(!cs.length) return {de:'',ate:''}; var de=(BL_DE&&cs.indexOf(BL_DE)>=0)?BL_DE:cs[0]; var ate=(BL_ATE&&cs.indexOf(BL_ATE)>=0)?BL_ATE:cs[cs.length-1]; if(de>ate) de=cs[0]; return {de:de, ate:ate}; }
 function condoContabil(x){
-  var o=oper(x);
-  var recMai=o.boletos.filter(function(b){return b.status==='pago'&&b.competencia==='2026-05';}).reduce(function(s,b){return s+b.valor;},0);
-  var despPagas=o.contasPagar.filter(function(c){return c.status==='paga';});
-  var despMai=despPagas.reduce(function(s,c){return s+c.valor;},0);
+  var o=oper(x); var per=blcPeriodo(x);
+  var inR=function(c){ return c>=per.de && c<=per.ate; };
+  var recPer=o.boletos.filter(function(b){return b.status==='pago'&&inR(b.competencia);}).reduce(function(s,b){return s+b.valor;},0);
+  var despPagas=o.contasPagar.filter(function(c){return c.status==='paga'&&inR(c.competencia);});
+  var despPer=despPagas.reduce(function(s,c){return s+c.valor;},0);
   var grupos={};
-  despPagas.forEach(function(c){ grupos[c.grupo]=(grupos[c.grupo]||0)+c.valor; });
+  o.contasPagar.filter(function(c){return c.status!=='negada'&&inR(c.competencia);}).forEach(function(c){ grupos[c.grupo]=(grupos[c.grupo]||0)+c.valor; });
   var gKeys=Object.keys(grupos).sort(function(a,b){return grupos[b]-grupos[a];});
   var maxG=gKeys.length?grupos[gKeys[0]]:1;
   var bars=gKeys.map(function(g){ var pct=Math.round(grupos[g]/maxG*100); return '<div class="kv"><span class="k" style="flex:0 0 150px">'+_esc(g)+'</span><span style="flex:1;display:flex;align-items:center;gap:10px"><span style="flex:1;height:9px;background:var(--areia);border:1px solid var(--linha);border-radius:99px;overflow:hidden"><span style="display:block;height:100%;width:'+pct+'%;background:var(--pinho);border-radius:99px"></span></span><span class="v" style="white-space:nowrap">'+brl(grupos[g])+'</span></span></div>'; }).join('');
-  var res=recMai-despMai;
+  var res=recPer-despPer;
+  var lbl = mlabelC(per.de)+(per.de!==per.ate?' a '+mlabelC(per.ate):'');
   var kpis='<div class="grid">'
-    +kpi('Receitas · maio', brl(recMai), 'Cotas recebidas na competência','pinho')
-    +kpi('Despesas pagas', brl(despMai), despPagas.length+' lançamento(s) liquidado(s)','terracota')
-    +kpi('Resultado', brl(res), res>=0?'Superávit':'Déficit', res>=0?'pinho':'terracota')
-    +kpi('Saldo em caixa', brl(x.kpi.saldo||0), 'Atualizado com baixas e liquidações','')
+    +kpi('Receita recebida', brl(recPer), 'Cotas pagas no período','pinho')
+    +kpi('Despesas pagas', brl(despPer), despPagas.length+' lançamento(s) liquidado(s)','terracota')
+    +kpi('Resultado de caixa', brl(res), res>=0?'Superávit':'Déficit', res>=0?'pinho':'terracota')
+    +kpi('Saldo em caixa', brl(x.kpi.saldo||0), 'Posição atual','')
     +'</div>';
-  var dre='<div class="card span-6"><h3>DRE simplificada · '+mlabelC('2026-05')+'</h3>'
-    +kv('(+) Receita de cotas', brl(recMai))+kv('(−) Despesas operacionais', brl(despMai))+kv('(=) Resultado', brl(res))
+  var dre='<div class="card span-6"><h3>DRE simplificada · '+lbl+'</h3>'
+    +kv('(+) Receita de cotas', brl(recPer))+kv('(−) Despesas operacionais', brl(despPer))+kv('(=) Resultado', brl(res))
     +'<p class="muted" style="font-size:12px;margin-top:12px">Demonstrações completas (DRE, Balanço, Fluxo, Balancete) no SGC do condomínio'+(x.sgcUrl?' — <a href="#" onclick="abrirSGC(\''+x.id+'\');return false" style="color:var(--pinho);font-weight:600">abrir SGC ↗</a>':'')+'.</p></div>';
-  var despCard='<div class="card span-6"><h3>Despesas por grupo · acumulado</h3>'+(bars||'<p class="muted">Sem despesas liquidadas ainda.</p>')+'</div>';
+  var despCard='<div class="card span-6"><h3>Despesas por grupo · período</h3>'+(bars||'<p class="muted">Sem despesas no período.</p>')+'</div>';
   return kpis+'<div class="grid">'+dre+despCard+balanceteCard(x)+'</div>';
 }
 
-/* ---------- balancete + razão (partidas dobradas) ---------- */
-function balanceteData(x){
+/* ---------- balancete de verificação + razão (partidas dobradas, padrão SGC) ---------- */
+function codGrupoCcd(g){ var i=CCD_GRUPOS.indexOf(g); return '5.'+((i<0?CCD_GRUPOS.length:i)+1); }
+function calcBalanceteCcd(x, de, ate){
   var o=oper(x);
-  var emitidas=o.boletos.reduce(function(s,b){return s+b.valor;},0);
-  var recebidas=o.boletos.filter(function(b){return b.status==='pago';}).reduce(function(s,b){return s+b.valor;},0);
-  var lanc=o.contasPagar.filter(function(c){return c.status!=='negada';});
-  var lancTot=lanc.reduce(function(s,c){return s+c.valor;},0);
-  var pagasTot=o.contasPagar.filter(function(c){return c.status==='paga';}).reduce(function(s,c){return s+c.valor;},0);
-  var saldo=x.kpi.saldo||0;
-  var abertura=Math.round((saldo-recebidas+pagasTot)*100)/100;
-  var grupos={};
-  lanc.forEach(function(c){ grupos[c.grupo]=(grupos[c.grupo]||0)+c.valor; });
-  var linhas=[
-    {key:'caixa', nome:'Caixa e equivalentes', cls:'Ativo', deb:abertura+recebidas, cred:pagasTot},
-    {key:'receber', nome:'Cotas a receber', cls:'Ativo', deb:emitidas, cred:recebidas},
-    {key:'forn', nome:'Fornecedores a pagar', cls:'Passivo', deb:pagasTot, cred:lancTot},
-    {key:'abertura', nome:'Saldo de abertura', cls:'Patrimônio', deb:0, cred:abertura},
-    {key:'receita', nome:'Receita de cotas condominiais', cls:'Receita', deb:0, cred:emitidas}
-  ];
-  Object.keys(grupos).sort().forEach(function(g){ linhas.push({key:'desp:'+g, nome:'Despesas — '+g, cls:'Despesa', deb:grupos[g], cred:0}); });
-  linhas.forEach(function(l){ l.saldo=Math.round((l.deb-l.cred)*100)/100; });
-  return {linhas:linhas, abertura:abertura, totDeb:linhas.reduce(function(s,l){return s+l.deb;},0), totCred:linhas.reduce(function(s,l){return s+l.cred;},0)};
+  var inR=function(c){ return c>=de && c<=ate; }, before=function(c){ return c<de; };
+  var cs=compsCcd(x); var prev=cs[cs.indexOf(de)-1];
+  var E=o.boletos.filter(function(b){return inR(b.competencia);}).reduce(function(s,b){return s+b.valor;},0);
+  var R=o.boletos.filter(function(b){return b.status==='pago' && inR(b.competencia);}).reduce(function(s,b){return s+b.valor;},0);
+  var desp=o.contasPagar.filter(function(c){return c.status!=='negada' && inR(c.competencia);});
+  var P=desp.reduce(function(s,c){return s+c.valor;},0);
+  var G=o.contasPagar.filter(function(c){return c.status==='paga' && inR(c.competencia);}).reduce(function(s,c){return s+c.valor;},0);
+  var caixaIni = prev ? saldoCaixaAteCcd(x, prev) : (o.saldoInicial||0);
+  var crIni=o.boletos.filter(function(b){return (b.status==='aberto'||b.status==='vencido') && before(b.competencia);}).reduce(function(s,b){return s+b.valor;},0);
+  var cpIni=o.contasPagar.filter(function(c){return (c.status==='pendente'||c.status==='aprovada') && before(c.competencia);}).reduce(function(s,c){return s+c.valor;},0);
+  var plIni=caixaIni+crIni-cpIni;
+  var conta=function(cod,nome,ini,deb,cred,nat,rk){ return {tipo:'c',cod:cod,nome:nome,ini:ini,deb:deb,cred:cred,nat:nat,fim:nat==='D'?ini+deb-cred:ini+cred-deb,rk:rk}; };
+  var linhas=[];
+  var sec=function(cod,nome,cts){ linhas.push({tipo:'h',cod:cod,nome:nome}); cts.forEach(function(c){linhas.push(c);}); linhas.push({tipo:'s',nome:'Subtotal '+nome,ini:cts.reduce(function(s,c){return s+c.ini;},0),deb:cts.reduce(function(s,c){return s+c.deb;},0),cred:cts.reduce(function(s,c){return s+c.cred;},0),fim:cts.reduce(function(s,c){return s+c.fim;},0)}); };
+  sec('1','ATIVO',[conta('1.1.01','Caixa e equivalentes (disponível)',caixaIni,R,G,'D','caixa'),conta('1.1.02','Contas a receber — cotas condominiais',crIni,E,R,'D','receber')]);
+  sec('2','PASSIVO',[conta('2.1.01','Contas a pagar — fornecedores',cpIni,G,P,'C','forn')]);
+  sec('3','PATRIMÔNIO LÍQUIDO',[conta('3.1.01','Fundo de reserva / superávit acumulado',plIni,0,0,'C','pl')]);
+  sec('4','RECEITAS',[conta('4.1.01','Taxas condominiais',0,0,E,'C','receita')]);
+  linhas.push({tipo:'h',cod:'5',nome:'DESPESAS'});
+  var dDeb=0, dFim=0;
+  CCD_GRUPOS.forEach(function(g){
+    var items = g==='Outros' ? desp.filter(function(c){return CCD_GRUPOS.indexOf(c.grupo)<0 || c.grupo==='Outros';}) : desp.filter(function(c){return c.grupo===g;});
+    if(!items.length) return;
+    var forns={}; items.forEach(function(c){ forns[c.fornecedor]=(forns[c.fornecedor]||0)+c.valor; });
+    linhas.push({tipo:'h2',cod:codGrupoCcd(g),nome:g});
+    var cts=[]; var i=0;
+    Object.keys(forns).sort().forEach(function(fn){ i++; cts.push(conta(codGrupoCcd(g)+'.'+('00'+i).slice(-3), fn, 0, forns[fn], 0, 'D', 'desp|'+g+'|'+fn)); });
+    cts.forEach(function(c){ linhas.push(c); });
+    var sd=cts.reduce(function(s,c){return s+c.deb;},0), sf=cts.reduce(function(s,c){return s+c.fim;},0);
+    linhas.push({tipo:'s',nome:'Subtotal '+g,ini:0,deb:sd,cred:0,fim:sf}); dDeb+=sd; dFim+=sf;
+  });
+  linhas.push({tipo:'s',nome:'Subtotal DESPESAS',ini:0,deb:dDeb,cred:0,fim:dFim});
+  var cc=linhas.filter(function(l){return l.tipo==='c';});
+  return {linhas:linhas, de:de, ate:ate, prev:prev, caixaIni:caixaIni, crIni:crIni, cpIni:cpIni, plIni:plIni,
+    totDeb:cc.reduce(function(s,l){return s+l.deb;},0), totCred:cc.reduce(function(s,l){return s+l.cred;},0),
+    totFimD:cc.filter(function(l){return l.nat==='D';}).reduce(function(s,l){return s+l.fim;},0),
+    totFimC:cc.filter(function(l){return l.nat==='C';}).reduce(function(s,l){return s+l.fim;},0)};
 }
 function balanceteCard(x){
-  var b=balanceteData(x);
+  var per=blcPeriodo(x), cs=compsCcd(x);
+  var b=calcBalanceteCcd(x, per.de, per.ate);
+  var fmtb=function(v){ return v?brl(v):'–'; };
   var rows=b.linhas.map(function(l){
-    var sl = l.saldo>=0 ? brl(l.saldo)+' D' : brl(-l.saldo)+' C';
-    return '<tr><td><strong>'+_esc(l.nome)+'</strong></td><td><span class="chip">'+l.cls+'</span></td><td class="num">'+(l.deb?brl(l.deb):'—')+'</td><td class="num">'+(l.cred?brl(l.cred):'—')+'</td><td class="num"><strong>'+sl+'</strong></td><td class="num"><button class="btn sm" onclick="verRazaoCcd(\''+x.id+'\',\''+l.key+'\')">Razão</button></td></tr>';
+    if(l.tipo==='h') return '<tr class="grp"><td>'+l.cod+'</td><td>'+_esc(l.nome)+'</td><td></td><td></td><td></td><td></td><td></td></tr>';
+    if(l.tipo==='h2') return '<tr><td class="muted">'+l.cod+'</td><td style="font-weight:600">'+_esc(l.nome)+'</td><td></td><td></td><td></td><td></td><td></td></tr>';
+    if(l.tipo==='s') return '<tr style="font-weight:600;background:rgba(228,200,180,.12)"><td></td><td>'+_esc(l.nome)+'</td><td class="num">'+fmtb(l.ini)+'</td><td class="num">'+fmtb(l.deb)+'</td><td class="num">'+fmtb(l.cred)+'</td><td class="num">'+fmtb(l.fim)+'</td><td></td></tr>';
+    return '<tr><td class="muted">'+l.cod+'</td><td style="padding-left:20px">'+_esc(l.nome)+'</td><td class="num">'+fmtb(l.ini)+'</td><td class="num">'+fmtb(l.deb)+'</td><td class="num">'+fmtb(l.cred)+'</td><td class="num">'+fmtb(l.fim)+' <span class="muted" style="font-size:10px">'+l.nat+'</span></td><td class="num"><button class="btn sm" onclick="verRazaoCcd(\''+x.id+'\',\''+l.rk+'\')">Razão</button></td></tr>';
   }).join('');
-  var ok=Math.abs(b.totDeb-b.totCred)<0.01;
-  return '<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Balancete de verificação · acumulado 2026</h3><span class="muted" style="font-size:12px">'+(ok?'✓ Débitos = Créditos':'⚠ diferença '+brl(b.totDeb-b.totCred))+'</span></div>'
-    +'<div class="tblx" style="margin-top:8px"><table class="tbl" style="min-width:820px"><thead><tr><th>Conta</th><th>Classe</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Saldo</th><th class="num">Razão</th></tr></thead><tbody>'+rows
-    +'<tr style="border-top:2px solid var(--linha)"><td><strong>Totais</strong></td><td></td><td class="num"><strong>'+brl(b.totDeb)+'</strong></td><td class="num"><strong>'+brl(b.totCred)+'</strong></td><td class="num">'+(ok?'<span class="badge pago">fechado</span>':'')+'</td><td></td></tr>'
-    +'</tbody></table></div><p class="muted" style="font-size:12px;margin-top:10px">Regime de partidas dobradas: emissão de cota (D Cotas a receber / C Receita), recebimento (D Caixa / C Cotas a receber), lançamento de despesa (D Despesa / C Fornecedores) e pagamento (D Fornecedores / C Caixa). Clique em <b>Razão</b> para os movimentos da conta.</p></div>';
+  var ok=Math.abs(b.totDeb-b.totCred)<0.5 && Math.abs(b.totFimD-b.totFimC)<0.5;
+  var selDe='<select class="inp" style="width:auto" onchange="setBlcCcd(\'de\',this.value)">'+cs.map(function(c){return '<option value="'+c+'"'+(c===per.de?' selected':'')+'>'+mlabelC(c)+'</option>';}).join('')+'</select>';
+  var selAte='<select class="inp" style="width:auto" onchange="setBlcCcd(\'ate\',this.value)">'+cs.map(function(c){return '<option value="'+c+'"'+(c===per.ate?' selected':'')+'>'+mlabelC(c)+'</option>';}).join('')+'</select>';
+  return '<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Balancete de Verificação <span class="chip">competência</span></h3><div style="display:flex;gap:8px;align-items:center"><label style="font-size:11px;color:var(--musgo);font-weight:600">De</label>'+selDe+'<label style="font-size:11px;color:var(--musgo);font-weight:600">Até</label>'+selAte+'</div></div>'
+    +'<div class="tblx"><table class="tbl" style="min-width:920px;margin-top:12px"><thead><tr><th>Código</th><th>Conta</th><th class="num">Saldo inicial</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo final</th><th class="num">Razão</th></tr></thead><tbody>'+rows
+    +'<tr style="font-weight:700;border-top:2px solid var(--linha)"><td></td><td>TOTAIS</td><td class="num">—</td><td class="num">'+brl(b.totDeb)+'</td><td class="num">'+brl(b.totCred)+'</td><td class="num">—</td><td></td></tr>'
+    +'</tbody></table></div>'
+    +'<p class="muted" style="font-size:12px;margin-top:10px">Contas patrimoniais (Ativo, Passivo, PL) e de resultado (Receitas, Despesas). '+(ok?'Verificação: <strong>Σ débitos = Σ créditos</strong> ('+brl(b.totDeb)+') e saldos finais <strong>devedores = credores</strong> ('+brl(b.totFimD)+').':'⚠ diferença a verificar.')+' Clique em <b>Razão</b> para abrir os movimentos — mesmo padrão do SGC.</p></div>';
 }
-function razaoMovs(x, key){
-  var o=oper(x); var b=balanceteData(x);
-  var comps=[]; o.boletos.forEach(function(z){ if(comps.indexOf(z.competencia)<0) comps.push(z.competencia); }); comps.sort();
+function razaoMovsCcd(x, rk, de, ate){
+  var o=oper(x); var b=calcBalanceteCcd(x, de, ate);
+  var inR=function(c){ return c>=de && c<=ate; };
+  var cs=compsCcd(x).filter(inR);
   var movs=[];
-  function emisComp(c){ var bs=o.boletos.filter(function(z){return z.competencia===c;}); return {n:bs.length, val:bs.reduce(function(s,z){return s+z.valor;},0)}; }
-  function recComp(c){ var bs=o.boletos.filter(function(z){return z.competencia===c && z.status==='pago';}); return {n:bs.length, val:bs.reduce(function(s,z){return s+z.valor;},0)}; }
-  if(key==='caixa'){
-    movs.push({data:'2026-01-01', hist:'Saldo de abertura', deb:b.abertura, cred:0});
-    comps.forEach(function(c){ var r=recComp(c); if(r.val) movs.push({data:c+'-15', hist:'Recebimento de cotas '+mlabelC(c)+' ('+r.n+' un.)', deb:r.val, cred:0}); });
-    o.contasPagar.filter(function(z){return z.status==='paga';}).forEach(function(z){ movs.push({data:z.vencimento, hist:'Pagamento '+z.numero+' — '+z.descricao, deb:0, cred:z.valor}); });
-  } else if(key==='receber'){
-    comps.forEach(function(c){ var e=emisComp(c); if(e.val) movs.push({data:c+'-01', hist:'Emissão de cotas '+mlabelC(c)+' ('+e.n+' un.)', deb:e.val, cred:0}); var r=recComp(c); if(r.val) movs.push({data:c+'-15', hist:'Baixa por recebimento '+mlabelC(c)+' ('+r.n+' un.)', deb:0, cred:r.val}); });
-  } else if(key==='forn'){
-    o.contasPagar.filter(function(z){return z.status!=='negada';}).forEach(function(z){ movs.push({data:z.vencimento, hist:'Lançamento '+z.numero+' — '+z.descricao, deb:0, cred:z.valor}); if(z.status==='paga') movs.push({data:z.vencimento, hist:'Pagamento '+z.numero, deb:z.valor, cred:0}); });
-  } else if(key==='receita'){
-    comps.forEach(function(c){ var e=emisComp(c); if(e.val) movs.push({data:c+'-01', hist:'Receita de cotas '+mlabelC(c)+' ('+e.n+' un.)', deb:0, cred:e.val}); });
-  } else if(key==='abertura'){
-    movs.push({data:'2026-01-01', hist:'Constituição do saldo de abertura', deb:0, cred:b.abertura});
-  } else if(key.indexOf('desp:')===0){
-    var g=key.slice(5);
-    o.contasPagar.filter(function(z){return z.status!=='negada' && z.grupo===g;}).forEach(function(z){ movs.push({data:z.vencimento, hist:z.numero+' — '+z.descricao+' ('+z.fornecedor+')', deb:z.valor, cred:0}); });
+  function emis(c){ var bs=o.boletos.filter(function(z){return z.competencia===c;}); return {n:bs.length,val:bs.reduce(function(s,z){return s+z.valor;},0)}; }
+  function rec(c){ var bs=o.boletos.filter(function(z){return z.competencia===c && z.status==='pago';}); return {n:bs.length,val:bs.reduce(function(s,z){return s+z.valor;},0)}; }
+  if(rk==='caixa'){
+    movs.push({data:de+'-01', hist:'Saldo inicial de caixa', deb:b.caixaIni, cred:0});
+    cs.forEach(function(c){ var r=rec(c); if(r.val) movs.push({data:c+'-15', hist:'Recebimento de cotas '+mlabelC(c)+' ('+r.n+' un.)', deb:r.val, cred:0}); });
+    o.contasPagar.filter(function(z){return z.status==='paga' && inR(z.competencia);}).forEach(function(z){ movs.push({data:z.vencimento, hist:'Pagamento '+z.numero+' — '+z.descricao, deb:0, cred:z.valor}); });
+  } else if(rk==='receber'){
+    movs.push({data:de+'-01', hist:'Saldo inicial — cotas a receber', deb:b.crIni, cred:0});
+    cs.forEach(function(c){ var e=emis(c); if(e.val) movs.push({data:c+'-01', hist:'Emissão de cotas '+mlabelC(c)+' ('+e.n+' un.)', deb:e.val, cred:0}); var r=rec(c); if(r.val) movs.push({data:c+'-15', hist:'Baixa por recebimento '+mlabelC(c)+' ('+r.n+' un.)', deb:0, cred:r.val}); });
+  } else if(rk==='forn'){
+    movs.push({data:de+'-01', hist:'Saldo inicial — fornecedores', deb:0, cred:b.cpIni});
+    o.contasPagar.filter(function(z){return z.status!=='negada' && inR(z.competencia);}).forEach(function(z){ movs.push({data:z.vencimento, hist:'Lançamento '+z.numero+' — '+z.descricao, deb:0, cred:z.valor}); if(z.status==='paga') movs.push({data:z.vencimento, hist:'Pagamento '+z.numero, deb:z.valor, cred:0}); });
+  } else if(rk==='pl'){
+    movs.push({data:de+'-01', hist:'Fundo de reserva / superávit acumulado (abertura)', deb:0, cred:b.plIni});
+  } else if(rk==='receita'){
+    cs.forEach(function(c){ var e=emis(c); if(e.val) movs.push({data:c+'-01', hist:'Receita de cotas '+mlabelC(c)+' ('+e.n+' un.)', deb:0, cred:e.val}); });
+  } else if(rk.indexOf('desp|')===0){
+    var parts=rk.split('|'); var g=parts[1], fn=parts[2];
+    o.contasPagar.filter(function(z){return z.status!=='negada' && inR(z.competencia) && z.fornecedor===fn && (z.grupo===g || (g==='Outros' && CCD_GRUPOS.indexOf(z.grupo)<0));}).forEach(function(z){ movs.push({data:z.vencimento, hist:z.numero+' — '+z.descricao, deb:z.valor, cred:0}); });
   }
   movs.sort(function(a,bb){ return a.data<bb.data?-1:1; });
-  var run=0; movs.forEach(function(m){ run=Math.round((run+m.deb-m.cred)*100)/100; m.saldo=run; });
+  var natC = (rk==='forn'||rk==='pl'||rk==='receita');
+  var run=0; movs.forEach(function(m){ run = natC ? Math.round((run+m.cred-m.deb)*100)/100 : Math.round((run+m.deb-m.cred)*100)/100; m.saldo=run; m.natC=natC; });
   return movs;
 }
-function verRazaoCcd(cid, key){
-  var x=condo(cid); var b=balanceteData(x);
-  var linha=b.linhas.find(function(l){return l.key===key;}); if(!linha) return;
-  var movs=razaoMovs(x, key);
-  var rows=movs.slice(0,80).map(function(m){
-    var sl = m.saldo>=0 ? brl(m.saldo)+' D' : brl(-m.saldo)+' C';
+function verRazaoCcd(cid, rk){
+  var x=condo(cid); var per=blcPeriodo(x);
+  var b=calcBalanceteCcd(x, per.de, per.ate);
+  var linha=b.linhas.find(function(l){return l.tipo==='c' && l.rk===rk;}); if(!linha) return;
+  var movs=razaoMovsCcd(x, rk, per.de, per.ate);
+  var rows=movs.slice(0,120).map(function(m){
+    var sl = m.saldo>=0 ? brl(m.saldo)+(m.natC?' C':' D') : brl(-m.saldo)+(m.natC?' D':' C');
     return '<tr><td style="white-space:nowrap">'+dataBRC(m.data)+'</td><td>'+_esc(m.hist)+'</td><td class="num">'+(m.deb?brl(m.deb):'—')+'</td><td class="num">'+(m.cred?brl(m.cred):'—')+'</td><td class="num" style="white-space:nowrap">'+sl+'</td></tr>';
   }).join('');
-  document.querySelector('#modal-prev-ccd .pv-title').textContent='Razão · '+linha.nome;
-  document.querySelector('#modal-prev-ccd .pv-sub').innerHTML=_esc(x.nome)+' · '+movs.length+' movimento(s)'+(movs.length>80?' (mostrando 80)':'')+' · acumulado 2026';
-  document.querySelector('#modal-prev-ccd .pv-body').innerHTML='<div class="tblx"><table class="tbl" style="min-width:520px"><thead><tr><th>Data</th><th>Histórico</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  document.querySelector('#modal-prev-ccd .pv-title').textContent='Razão · '+linha.cod+' '+linha.nome;
+  document.querySelector('#modal-prev-ccd .pv-sub').innerHTML=_esc(x.nome)+' · '+mlabelC(per.de)+(per.de!==per.ate?' a '+mlabelC(per.ate):'')+' · '+movs.length+' movimento(s)'+(movs.length>120?' (mostrando 120)':'');
+  document.querySelector('#modal-prev-ccd .pv-body').innerHTML='<div class="tblx"><table class="tbl" style="min-width:540px"><thead><tr><th>Data</th><th>Histórico</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   abrirModal('modal-prev-ccd');
 }
 
