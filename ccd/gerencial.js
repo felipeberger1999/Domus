@@ -94,7 +94,7 @@ function condoPessoas(x){
   var ativos=o.funcionarios.filter(function(f){return f.status==='ativo';});
   var folha=ativos.reduce(function(s,f){return s+f.salario;},0);
   var fr=o.funcionarios.map(function(f){
-    return '<tr><td><strong>'+_esc(f.nome)+'</strong></td><td>'+_esc(f.cargo)+'</td><td class="num">'+brl(f.salario)+'</td><td style="white-space:nowrap">'+dataBRC(f.admissao)+'</td><td><span class="badge '+(f.status==='ativo'?'ativo':'demitido')+'">'+f.status+'</span></td><td class="num" style="white-space:nowrap"><button class="btn sm" onclick="abrirFuncCcd(\''+x.id+'\','+f.id+')">✎ Editar</button> '+(f.status==='ativo'?'<button class="btn sm" onclick="desligarFunc(\''+x.id+'\','+f.id+')">Desligar</button>':'')+'</td></tr>';
+    return '<tr><td><button class="lnk-cell" onclick="fichaFuncCcd(\''+x.id+'\','+f.id+')" title="Ver ficha e folha">'+_esc(f.nome)+'</button></td><td>'+_esc(f.cargo)+'</td><td class="num">'+brl(f.salario)+'</td><td style="white-space:nowrap">'+dataBRC(f.admissao)+'</td><td><span class="badge '+(f.status==='ativo'?'ativo':'demitido')+'">'+f.status+'</span></td><td class="num" style="white-space:nowrap"><button class="btn sm" onclick="fichaFuncCcd(\''+x.id+'\','+f.id+')">Ficha</button> <button class="btn sm" onclick="abrirFuncCcd(\''+x.id+'\','+f.id+')">✎</button> '+(f.status==='ativo'?'<button class="btn sm" onclick="desligarFunc(\''+x.id+'\','+f.id+')">Desligar</button>':'')+'</td></tr>';
   }).join('');
   var sindicoCard='<div class="card span-4"><h3>Síndico(a)</h3>'+kv('Nome', x.sindico)+kv('Mandato', x.desde+' — atual')+kv('Contato', 'sindico@'+x.id+'.domus.app')+'<div style="margin-top:12px"><button class="btn sm" onclick="abrirEditCondo(\''+x.id+'\')">✎ Alterar síndico</button></div></div>';
   var dpCard='<div class="card span-8"><div class="flex-between"><h3 style="margin:0">Funcionários & DP · folha '+brl(folha)+'/mês</h3><div style="display:flex;gap:10px;align-items:center"><span class="muted" style="font-size:12px">'+ativos.length+' ativo(s)</span><button class="btn primary sm" onclick="novoFuncCcd(\''+x.id+'\')">+ Novo funcionário</button></div></div>'
@@ -324,6 +324,53 @@ function excluirCotaCcd(){
   addFeed('Cobrança', x.nome, 'Cobrança excluída', 'Cota '+b.unidade+' ('+mlabelC(b.competencia)+') removida pela equipe Domus');
   fecharModal('modal-cota-ccd'); render(); toast('Cobrança excluída.');
 }
+function _q(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+/* extrato do fornecedor — lista natural de lançamentos (Contas a Pagar) */
+function extratoFornecedorCcd(cid, fornecedor){
+  var x=condo(cid); var o=oper(x);
+  var ls=o.contasPagar.filter(function(c){return c.fornecedor===fornecedor;}).slice().sort(function(a,b){return a.vencimento<b.vencimento?1:-1;});
+  if(!ls.length){ toast('Sem lançamentos para '+fornecedor+'.'); return; }
+  var pago=ls.filter(function(c){return c.status==='paga';}).reduce(function(s,c){return s+c.valor;},0);
+  var aberto=ls.filter(function(c){return c.status==='pendente'||c.status==='aprovada';}).reduce(function(s,c){return s+c.valor;},0);
+  var total=ls.reduce(function(s,c){return s+c.valor;},0);
+  var rows=ls.map(function(c){
+    return '<tr><td style="white-space:nowrap"><strong>'+c.numero+'</strong></td><td style="white-space:nowrap">'+dataBRC(c.vencimento)+'</td><td>'+_esc(c.descricao)+'<div class="muted" style="font-size:11px">'+mlabelC(c.competencia)+'</div></td><td><span class="chip">'+_esc(c.grupo)+'</span></td><td class="num"><strong>'+brl(c.valor)+'</strong></td><td><span class="badge '+c.status+'">'+c.status+'</span></td></tr>';
+  }).join('');
+  var resumo='<div class="grid" style="margin-bottom:4px">'
+    +'<div class="card kpi span-4" style="padding:14px 16px"><h3>Total lançado</h3><div class="valor" style="font-size:20px">'+brl(total)+'</div><div class="legenda">'+ls.length+' lançamento(s)</div></div>'
+    +'<div class="card kpi pinho span-4" style="padding:14px 16px"><h3>Pago</h3><div class="valor" style="font-size:20px">'+brl(pago)+'</div><div class="legenda">liquidado</div></div>'
+    +'<div class="card kpi terracota span-4" style="padding:14px 16px"><h3>Em aberto</h3><div class="valor" style="font-size:20px">'+brl(aberto)+'</div><div class="legenda">pendente + aprovado</div></div>'
+    +'</div>';
+  document.querySelector('#modal-prev-ccd .pv-title').textContent='Extrato do fornecedor';
+  document.querySelector('#modal-prev-ccd .pv-sub').innerHTML='<b>'+_esc(fornecedor)+'</b> · '+_esc(x.nome)+' · histórico de lançamentos';
+  document.querySelector('#modal-prev-ccd .pv-body').innerHTML=resumo+'<div class="tblx"><table class="tbl" style="min-width:580px"><thead><tr><th>Nº</th><th>Vencimento</th><th>Descrição</th><th>Grupo</th><th class="num">Valor</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  abrirModal('modal-prev-ccd');
+}
+/* INSS estimado (faixas 2024) — só para o demonstrativo */
+function _inss(b){
+  var t=[[1412,0.075],[2666.68,0.09],[4000.03,0.12],[8157.41,0.14]], prev=0, val=0;
+  for(var i=0;i<t.length;i++){ var base=Math.min(b,t[i][0]); if(base>prev){ val+=(base-prev)*t[i][1]; prev=t[i][0]; } if(b<=t[i][0]) break; }
+  return Math.round(val*100)/100;
+}
+/* ficha do funcionário — extrato natural de folha (DP) */
+function fichaFuncCcd(cid, fid){
+  var x=condo(cid); var f=oper(x).funcionarios.find(function(z){return z.id===fid;}); if(!f) return;
+  var comps=['2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
+  var rows=comps.slice().reverse().map(function(c){
+    var bruto=f.salario, inss=_inss(bruto), liq=Math.round((bruto-inss)*100)/100;
+    return '<tr><td style="white-space:nowrap">'+mlabelC(c)+'</td><td>Folha mensal</td><td class="num">'+brl(bruto)+'</td><td class="num">'+brl(inss)+'</td><td class="num"><strong>'+brl(liq)+'</strong></td></tr>';
+  }).join('');
+  var fgts=Math.round(f.salario*0.08*100)/100;
+  var resumo='<div class="grid" style="margin-bottom:4px">'
+    +'<div class="card kpi span-4" style="padding:14px 16px"><h3>Salário base</h3><div class="valor" style="font-size:20px">'+brl(f.salario)+'</div><div class="legenda">'+_esc(f.cargo)+'</div></div>'
+    +'<div class="card kpi span-4" style="padding:14px 16px"><h3>FGTS (8%)</h3><div class="valor" style="font-size:20px">'+brl(fgts)+'</div><div class="legenda">depósito do empregador</div></div>'
+    +'<div class="card kpi '+(f.status==='ativo'?'pinho':'terracota')+' span-4" style="padding:14px 16px"><h3>Situação</h3><div class="valor" style="font-size:20px">'+(f.status==='ativo'?'Ativo':'Desligado')+'</div><div class="legenda">admissão '+dataBRC(f.admissao)+'</div></div>'
+    +'</div>';
+  document.querySelector('#modal-prev-ccd .pv-title').textContent='Ficha · '+f.nome;
+  document.querySelector('#modal-prev-ccd .pv-sub').innerHTML=_esc(f.cargo)+' · '+_esc(x.nome)+' · histórico de folha (valores estimados)';
+  document.querySelector('#modal-prev-ccd .pv-body').innerHTML=resumo+'<div class="tblx"><table class="tbl" style="min-width:520px"><thead><tr><th>Competência</th><th>Lançamento</th><th class="num">Bruto</th><th class="num">INSS (est.)</th><th class="num">Líquido (est.)</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  abrirModal('modal-prev-ccd');
+}
 function baixarCota(cid, bid){
   var x=condo(cid); var b=oper(x).boletos.find(function(z){return z.id===bid;}); if(!b||b.status==='pago') return;
   b.status='pago'; syncKpi(x);
@@ -365,7 +412,7 @@ function condoPagar(x){
   var ord=lista.slice().sort(function(a,b){ var r={pendente:0,aprovada:1,paga:2,negada:3}; return (r[a.status]-r[b.status])||(a.vencimento>b.vencimento?1:-1); });
   var totFiltro=lista.reduce(function(s,c){return s+c.valor;},0);
   var rows=ord.map(function(c){
-    return '<tr><td style="white-space:nowrap"><strong>'+c.numero+'</strong></td><td style="min-width:280px"><div style="font-weight:600;line-height:1.35">'+_esc(c.descricao)+'</div><div class="muted" style="font-size:11.5px;margin-top:3px">'+_esc(c.fornecedor)+' · '+_esc(c.grupo)+' · '+mlabelC(c.competencia)+'</div></td><td style="white-space:nowrap">'+dataBRC(c.vencimento)+'</td><td class="num"><strong>'+brl(c.valor)+'</strong></td><td><span class="badge '+c.status+'">'+c.status+'</span></td><td class="num" style="white-space:nowrap">'+ac(c)+'</td></tr>';
+    return '<tr><td style="white-space:nowrap"><strong>'+c.numero+'</strong></td><td style="min-width:280px"><div style="font-weight:600;line-height:1.35">'+_esc(c.descricao)+'</div><div class="muted" style="font-size:11.5px;margin-top:3px"><button class="lnk-cell" style="font-weight:600;color:var(--musgo);text-decoration-color:rgba(138,127,116,.4)" onclick="extratoFornecedorCcd(\''+x.id+'\',\''+_q(c.fornecedor)+'\')" title="Extrato do fornecedor">'+_esc(c.fornecedor)+'</button> · '+_esc(c.grupo)+' · '+mlabelC(c.competencia)+'</div></td><td style="white-space:nowrap">'+dataBRC(c.vencimento)+'</td><td class="num"><strong>'+brl(c.valor)+'</strong></td><td><span class="badge '+c.status+'">'+c.status+'</span></td><td class="num" style="white-space:nowrap">'+ac(c)+'</td></tr>';
   }).join('');
   var sel=function(on,val,lbl){ return '<option value="'+_esc(val)+'"'+(on===val?' selected':'')+'>'+_esc(lbl)+'</option>'; };
   var filtros='<div class="pg-toolbar">'
