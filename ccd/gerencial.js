@@ -218,7 +218,7 @@ function condoCotas(x){
   var rows=ord.slice(0,250).map(function(b){
     var ac = (b.status==='pago' ? '' : '<button class="btn primary sm" onclick="baixarCota(\''+x.id+'\','+b.id+')">Registrar pagamento</button> <button class="btn sm" onclick="segundaVia(\''+x.id+'\','+b.id+')">2ª via</button> ')
       +'<button class="btn sm" onclick="abrirCotaCcd(\''+x.id+'\','+b.id+')">✎</button>';
-    return '<tr><td style="white-space:nowrap"><strong>'+_esc(b.unidade)+'</strong></td><td>'+_esc(b.morador)+'</td><td style="white-space:nowrap">'+mlabelC(b.competencia)+'</td><td style="white-space:nowrap">'+dataBRC(b.vencimento)+'</td><td class="num">'+brl(b.valor)+'</td><td><span class="badge '+b.status+'">'+b.status+'</span></td><td class="num" style="white-space:nowrap">'+ac+'</td></tr>';
+    return '<tr><td style="white-space:nowrap"><button class="lnk-cell" onclick="extratoUnidadeCcd(\''+x.id+'\',\''+_esc(b.unidade)+'\')" title="Ver extrato da unidade">'+_esc(b.unidade)+'</button></td><td>'+_esc(b.morador)+'</td><td style="white-space:nowrap">'+mlabelC(b.competencia)+'</td><td style="white-space:nowrap">'+dataBRC(b.vencimento)+'</td><td class="num">'+brl(b.valor)+'</td><td><span class="badge '+b.status+'">'+b.status+'</span></td><td class="num" style="white-space:nowrap">'+ac+'</td></tr>';
   }).join('');
   var sel=function(on,val,lbl){ return '<option value="'+val+'"'+(on===val?' selected':'')+'>'+lbl+'</option>'; };
   var tabela='<div class="card span-12"><h3>Controle de cotas <span class="r">'+lista.length+' registro(s)</span></h3>'
@@ -251,8 +251,8 @@ function inadPorMorador(x){
   if(!dev.length) return '<div class="card span-12"><h3>Inadimplência por morador</h3><p class="muted" style="margin-top:8px">Nenhum morador inadimplente. 🎉</p></div>';
   var tot=dev.reduce(function(s,d){return s+d.total;},0);
   var rows=dev.map(function(d){
-    return '<tr><td><strong>'+_esc(d.morador)+'</strong><div class="muted" style="font-size:11px">'+_esc(d.tel)+'</div></td><td style="white-space:nowrap"><strong>'+_esc(d.unidade)+'</strong></td><td class="num">'+d.n+'</td><td style="white-space:nowrap">'+_esc(d.comps.join(', '))+'</td><td class="num">'+brl(d.val)+'</td><td class="num"><strong>'+brl(d.total)+'</strong><div class="muted" style="font-size:10.5px">+ multa '+brl(d.multa)+' · juros '+brl(d.juros)+'</div></td>'
-      +'<td class="num" style="white-space:nowrap"><button class="btn primary sm" onclick="cobrarMorador(\''+x.id+'\',\''+_esc(d.unidade)+'\')">Cobrar agora</button> <button class="btn sm" onclick="verCotasUnidade(\''+_esc(d.unidade)+'\')">Ver cotas</button></td></tr>';
+    return '<tr><td><strong>'+_esc(d.morador)+'</strong><div class="muted" style="font-size:11px">'+_esc(d.tel)+'</div></td><td style="white-space:nowrap"><button class="lnk-cell" onclick="extratoUnidadeCcd(\''+x.id+'\',\''+_esc(d.unidade)+'\')" title="Ver extrato">'+_esc(d.unidade)+'</button></td><td class="num">'+d.n+'</td><td style="white-space:nowrap">'+_esc(d.comps.join(', '))+'</td><td class="num">'+brl(d.val)+'</td><td class="num"><strong>'+brl(d.total)+'</strong><div class="muted" style="font-size:10.5px">+ multa '+brl(d.multa)+' · juros '+brl(d.juros)+'</div></td>'
+      +'<td class="num" style="white-space:nowrap"><button class="btn primary sm" onclick="cobrarMorador(\''+x.id+'\',\''+_esc(d.unidade)+'\')">Cobrar agora</button> <button class="btn sm" onclick="extratoUnidadeCcd(\''+x.id+'\',\''+_esc(d.unidade)+'\')">Extrato</button></td></tr>';
   }).join('');
   return '<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Inadimplência por morador <span class="r">'+dev.length+' devedor(es) · '+brl(tot)+' atualizado</span></h3><span class="muted" style="font-size:12px">multa '+(x.params.multa||2)+'% + juros '+(x.params.juros||1)+'% a.m.</span></div>'
     +'<div class="tblx" style="margin-top:8px"><table class="tbl" style="min-width:880px"><thead><tr><th>Morador</th><th>Unidade</th><th class="num">Cotas</th><th>Competências</th><th class="num">Original</th><th class="num">Atualizado</th><th class="num">Ações</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
@@ -263,6 +263,37 @@ function cobrarMorador(cid, unidade){
   toast('Agente de Cobrança acionado para a unidade '+unidade+' (modo teste — nada enviado).');
 }
 function verCotasUnidade(unidade){ CT_Q=unidade.toLowerCase(); CT_ST='vencido'; CT_COMP=''; render(); window.scrollTo(0,300); }
+/* extrato da unidade — conta-corrente do condômino, com saldo devedor corrente */
+function extratoUnidadeCcd(cid, unidade){
+  var x=condo(cid); var o=oper(x);
+  var bs=o.boletos.filter(function(b){return b.unidade===unidade;}).slice().sort(function(a,b){return a.competencia<b.competencia?-1:(a.competencia>b.competencia?1:0);});
+  if(!bs.length){ toast('Sem cotas para a unidade '+unidade+'.'); return; }
+  var morador=(o.moradores.find(function(m){return m.unidade===unidade;})||{nome:bs[0].morador}).nome;
+  var movs=[];
+  bs.forEach(function(b){
+    movs.push({data:b.vencimento, hist:'Emissão da cota '+mlabelC(b.competencia), deb:b.valor, cred:0, st:b.status});
+    if(b.status==='pago') movs.push({data:b.vencimento, hist:'Pagamento da cota '+mlabelC(b.competencia), deb:0, cred:b.valor, st:'pago'});
+  });
+  // saldo devedor corrente (débito de emissão − crédito de pagamento)
+  var run=0; movs.forEach(function(m){ run=Math.round((run+m.deb-m.cred)*100)/100; m.saldo=run; });
+  var aberto=bs.filter(function(b){return b.status==='aberto'||b.status==='vencido';});
+  var devOrig=aberto.reduce(function(s,b){return s+b.valor;},0);
+  var venc=bs.filter(function(b){return b.status==='vencido';}).reduce(function(s,b){return s+b.valor;},0);
+  var multa=Math.round(venc*(x.params.multa||2))/100, juros=Math.round(venc*(x.params.juros||1))/100;
+  var atualizado=Math.round((devOrig+multa+juros)*100)/100;
+  var rows=movs.map(function(m){
+    return '<tr><td style="white-space:nowrap">'+dataBRC(m.data)+'</td><td>'+_esc(m.hist)+' '+(m.st?'<span class="badge '+m.st+'">'+m.st+'</span>':'')+'</td><td class="num">'+(m.deb?brl(m.deb):'—')+'</td><td class="num">'+(m.cred?brl(m.cred):'—')+'</td><td class="num" style="white-space:nowrap"><strong>'+brl(m.saldo)+'</strong></td></tr>';
+  }).join('');
+  var resumo='<div class="grid" style="margin-bottom:4px">'
+    +'<div class="card kpi span-4" style="padding:14px 16px"><h3>Em aberto</h3><div class="valor" style="font-size:20px">'+brl(devOrig)+'</div><div class="legenda">'+aberto.length+' cota(s)</div></div>'
+    +'<div class="card kpi terracota span-4" style="padding:14px 16px"><h3>Vencido + encargos</h3><div class="valor" style="font-size:20px">'+brl(atualizado)+'</div><div class="legenda">multa '+brl(multa)+' · juros '+brl(juros)+'</div></div>'
+    +'<div class="card kpi pinho span-4" style="padding:14px 16px"><h3>Cotas pagas</h3><div class="valor" style="font-size:20px">'+bs.filter(function(b){return b.status==='pago';}).length+'</div><div class="legenda">de '+bs.length+' no período</div></div>'
+    +'</div>';
+  document.querySelector('#modal-prev-ccd .pv-title').textContent='Extrato · Unidade '+unidade;
+  document.querySelector('#modal-prev-ccd .pv-sub').innerHTML='<b>'+_esc(morador)+'</b> · '+_esc(x.nome)+' · conta-corrente do condômino';
+  document.querySelector('#modal-prev-ccd .pv-body').innerHTML=resumo+'<div class="tblx"><table class="tbl" style="min-width:540px"><thead><tr><th>Data</th><th>Histórico</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo devedor</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  abrirModal('modal-prev-ccd');
+}
 function abrirCotaCcd(cid, bid){
   var b=oper(condo(cid)).boletos.find(function(z){return z.id===bid;}); if(!b) return;
   document.getElementById('cq-condo').value=cid; document.getElementById('cq-id').value=bid;
@@ -673,7 +704,7 @@ function renderOperacao(){
   var devAll=[];
   CCD.forEach(function(x){ devedores(x).forEach(function(d){ d.condoNome=x.nome; d.condoId=x.id; devAll.push(d); }); });
   var topRows=devAll.sort(function(a,b){return b.total-a.total;}).slice(0,10).map(function(d){
-    return '<tr><td><strong>'+_esc(d.morador)+'</strong><div class="muted" style="font-size:11px">'+_esc(d.condoNome)+'</div></td><td style="white-space:nowrap"><strong>'+_esc(d.unidade)+'</strong></td><td class="num">'+d.n+'</td><td class="num"><strong>'+brl(d.total)+'</strong></td><td class="num" style="white-space:nowrap"><button class="btn primary sm" onclick="cobrarMorador(\''+d.condoId+'\',\''+_esc(d.unidade)+'\')">Cobrar</button> <button class="btn sm" onclick="abrirCondo(\''+d.condoId+'\',\'cotas\')">Abrir</button></td></tr>';
+    return '<tr><td><strong>'+_esc(d.morador)+'</strong><div class="muted" style="font-size:11px">'+_esc(d.condoNome)+'</div></td><td style="white-space:nowrap"><button class="lnk-cell" onclick="extratoUnidadeCcd(\''+d.condoId+'\',\''+_esc(d.unidade)+'\')" title="Ver extrato">'+_esc(d.unidade)+'</button></td><td class="num">'+d.n+'</td><td class="num"><strong>'+brl(d.total)+'</strong></td><td class="num" style="white-space:nowrap"><button class="btn primary sm" onclick="cobrarMorador(\''+d.condoId+'\',\''+_esc(d.unidade)+'\')">Cobrar</button> <button class="btn sm" onclick="abrirCondo(\''+d.condoId+'\',\'cotas\')">Abrir</button></td></tr>';
   }).join('');
   var topCard='<div class="card span-12"><div class="flex-between"><h3 style="margin:0">Top devedores da base <span class="r">'+devAll.length+' morador(es) inadimplente(s)</span></h3><span class="muted" style="font-size:12px">valor atualizado com multa e juros</span></div>'
     +(devAll.length?'<div class="tblx" style="margin-top:8px"><table class="tbl" style="min-width:680px"><thead><tr><th>Morador · condomínio</th><th>Unidade</th><th class="num">Cotas</th><th class="num">Devido</th><th class="num">Ações</th></tr></thead><tbody>'+topRows+'</tbody></table></div>':'<p class="muted" style="margin-top:8px">Base 100% adimplente. 🎉</p>')+'</div>';

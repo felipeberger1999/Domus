@@ -203,7 +203,7 @@ function renderReceber(){
     const tot=sum(lst,x=>x.valor), venc=lst.filter(x=>x.status==='vencido');
     const maxAtr=venc.length?Math.max(...venc.map(x=>Math.round((HOJE-new Date(x.vencimento+'T00:00:00'))/864e5))):0;
     const rows=lst.map(x=>`<tr><td>Cota ${mlabel(x.competencia)}</td><td>${dataBR(x.vencimento)}</td><td class="num">${brl(x.valor)}</td><td class="${x.status==='vencido'?'desp':'muted'}">${atraso(x)}</td><td><span class="badge ${x.status}">${x.status}</span></td><td><a class="lnk" onclick="reciboCota(${x.id})">⬇ Recibo</a></td><td class="num"><button class="btn pinho sm" onclick="confirmarPagamento(${x.id})">Confirmar pgto</button></td></tr>`).join('');
-    return `<details class="uni"><summary><span class="arr">▶</span><span><strong>${uNum(uk)}-${uBloco(uk)}</strong> · <span class="muted">${(moradorDaUnidade(uk)||{}).nome||''}</span></span><span class="muted">${lst.length} cota(s)</span><span class="num"><strong>${brl(tot)}</strong></span><span>${venc.length?`<span class="badge vencido">${maxAtr}d atraso</span>`:'<span class="badge aberto">a vencer</span>'}</span></summary><div class="body"><table class="tbl"><thead><tr><th>Cota</th><th>Vencimento</th><th class="num">Valor</th><th>Atraso</th><th>Status</th><th>Recibo</th><th class="num">Ação</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+    return `<details class="uni"><summary><span class="arr">▶</span><span><strong>${uNum(uk)}-${uBloco(uk)}</strong> · <span class="muted">${(moradorDaUnidade(uk)||{}).nome||''}</span></span><span class="muted">${lst.length} cota(s)</span><span class="num"><strong>${brl(tot)}</strong></span><span>${venc.length?`<span class="badge vencido">${maxAtr}d atraso</span>`:'<span class="badge aberto">a vencer</span>'}</span></summary><div class="body"><div style="margin-bottom:10px"><button class="btn sm" onclick="extratoUnidadeSGC(${uk})">📄 Extrato completo da unidade</button></div><table class="tbl"><thead><tr><th>Cota</th><th>Vencimento</th><th class="num">Valor</th><th>Atraso</th><th>Status</th><th>Recibo</th><th class="num">Ação</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
   }).join('');
   return `<div class="ai-note"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E5A4F" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg><div>O <strong>agente Cobrança</strong> controla a carteira a receber cota por cota e executa a <strong>régua de cobrança</strong> (editável) automaticamente.</div></div>
   <div class="grid">
@@ -380,6 +380,26 @@ function verRazao(rk){
   document.getElementById('modal-razao').classList.add('open');
 }
 function fecharRazao(){document.getElementById('modal-razao').classList.remove('open');}
+function extratoUnidadeSGC(uid){
+  const bs=DATA.boletos.filter(b=>String(b.unidade_id)===String(uid)).slice().sort((a,b)=>a.competencia.localeCompare(b.competencia));
+  if(!bs.length){return;}
+  const m=moradorDaUnidade(uid)||{}; const ulbl=uNum(uid)+'-'+uBloco(uid);
+  let movs=[];
+  bs.forEach(b=>{
+    movs.push({data:b.vencimento,hist:'Emissão da cota '+mlabel(b.competencia),deb:b.valor,cred:0,st:b.status});
+    if(b.status==='pago') movs.push({data:b.pago_em||b.vencimento,hist:'Pagamento da cota '+mlabel(b.competencia),deb:0,cred:b.valor,st:'pago'});
+  });
+  movs.sort((a,b)=>a.data<b.data?-1:1);
+  let run=0; movs.forEach(mv=>{run=Math.round((run+mv.deb-mv.cred)*100)/100;mv.saldo=run;});
+  const aberto=bs.filter(b=>b.status==='aberto'||b.status==='vencido'), devOrig=sum(aberto,b=>b.valor);
+  const vencV=sum(bs.filter(b=>b.status==='vencido'),b=>b.valor);
+  const cota=DATA.condominio.cota||0;
+  const rows=movs.map(mv=>`<tr><td style="white-space:nowrap">${dataBR(mv.data)}</td><td>${mv.hist} <span class="badge ${mv.st}">${mv.st}</span></td><td class="num">${mv.deb?brl(mv.deb):'—'}</td><td class="num">${mv.cred?brl(mv.cred):'—'}</td><td class="num" style="white-space:nowrap"><strong>${brl(mv.saldo)}</strong></td></tr>`).join('');
+  document.querySelector('#modal-razao .rz-title').textContent='Extrato · Unidade '+ulbl;
+  document.querySelector('#modal-razao .rz-sub').innerHTML=`<b>${m.nome||''}</b> · conta-corrente do condômino · em aberto <strong>${brl(devOrig)}</strong>${vencV?` · vencido <strong style="color:var(--terracota)">${brl(vencV)}</strong>`:''}`;
+  document.querySelector('#modal-razao .rz-body').innerHTML=`<div class="tblx"><table class="tbl" style="min-width:520px"><thead><tr><th>Data</th><th>Histórico</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo devedor</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  document.getElementById('modal-razao').classList.add('open');
+}
 function renderResultado(){
   const dre=calcDRE(),flx=calcFluxo(),bal=calcBalanco(BAL_DATA);
   const opt=sel=>COMPETS.map(c=>`<option value="${c}" ${c===sel?'selected':''}>${mlabel(c)}</option>`).join('');
